@@ -1,0 +1,4 @@
+FIVE stands for "Firewall and VPN for eWON".
+This project is a fork of the IPCop firewall project focused on bringing VPN connectivity for eWON 
+to a central server while at the same time protecting this server for external intrusions.
+
