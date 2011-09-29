@@ -1,0 +1,5 @@
+usr/sbin/openvpn
+#usr/share/doc/openvpn
+#usr/share/doc/openvpn/management-notes.txt
+#usr/share/man/man8/openvpn.8
+var/log/openvpnserver.log

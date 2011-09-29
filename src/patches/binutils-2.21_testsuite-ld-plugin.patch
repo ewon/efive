@@ -1,0 +1,14 @@
+From upstream: 
+http://sourceware.org/ml/binutils/2010-11/msg00140.html
+http://git.kernel.org/?p=devel/binutils/hjl/x86.git;a=commitdiff;h=0b4b7aa6e6e4b218ab623b5adc1eb980416bffd8
+
+--- binutils-2.21/ld/testsuite/ld-plugin/plugin-6.d.old	2011-01-03 21:28:37.000000000 +0100
++++ binutils-2.21/ld/testsuite/ld-plugin/plugin-6.d	2011-01-03 21:28:48.000000000 +0100
+@@ -26,6 +26,6 @@
+ #...
+ hook called: all symbols read.
+ tmpdir/main.o: In function `main':
+-.*ld/testsuite/ld-plugin/main.c:12: undefined reference to `func'
++.*main.c.*: undefined reference to `func'
+ hook called: cleanup.
+ #...

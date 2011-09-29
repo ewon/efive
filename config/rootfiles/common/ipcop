@@ -1,0 +1,4 @@
+etc/isdn-card-list
+etc/nic-modules-list
+var/log/dyndns
+var/log/fw_timeframe_log

@@ -1,0 +1,17 @@
+##
+## ulogd-1.24
+##
+etc/ulogd.conf
+#usr/lib/ulogd
+usr/lib/ulogd/ulogd_BASE.so
+#usr/lib/ulogd/ulogd_LOCAL.so
+#usr/lib/ulogd/ulogd_LOGEMU.so
+#usr/lib/ulogd/ulogd_OPRINT.so
+#usr/lib/ulogd/ulogd_PCAP.so
+#usr/lib/ulogd/ulogd_PWSNIFF.so
+usr/lib/ulogd/ulogd_SQLITE3.so
+#usr/lib/ulogd/ulogd_SYSLOG.so
+usr/sbin/ulogd
+var/ipcop/traffic/empty-ulogd.db
+#var/log/traffic
+var/log/traffic/ulogd.db

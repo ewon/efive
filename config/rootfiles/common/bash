@@ -1,0 +1,8 @@
+## bash-4.2 (we cheat for sh and bash here)
+##
+bin/sh
+bin/bash
+#bin/bashbug
+#usr/share/info/bash.info
+#usr/share/man/man1/bash.1
+#usr/share/man/man1/bashbug.1

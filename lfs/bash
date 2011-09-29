@@ -1,0 +1,145 @@
+###############################################################################
+# This file is part of the IPCop Firewall.                                    #
+#                                                                             #
+# IPCop is free software; you can redistribute it and/or modify               #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation; either version 2 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# IPCop is distributed in the hope that it will be useful,                    #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with IPCop; if not, write to the Free Software                        #
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA    #
+#                                                                             #
+# Makefiles are based on LFSMake, which is                                    #
+# Copyright (C) 2002 Rod Roard <rod@sunsetsystems.com>                        #
+#                                                                             #
+# Modifications by:                                                           #
+# ??-12-2003 Mark Wormgoor < mark@wormgoor.com>                               #
+#          - Modified Makefile for IPCop build                                #
+#                                                                             #
+# $Id: bash 5670 2011-05-11 17:48:38Z gespinasse $
+#                                                                             #
+###############################################################################
+
+###############################################################################
+# Definitions
+###############################################################################
+
+include Config
+
+PKG_NAME   = bash
+VER        = 4.2
+HOST_ARCH  = all
+OTHER_SRC  = yes
+
+THISAPP    = $(PKG_NAME)-$(VER)
+DL_FILE    = $(THISAPP).tar.gz
+DL_FROM    = $(URL_GNU)/$(PKG_NAME)
+DIR_APP    = $(DIR_SRC)/$(THISAPP)
+TARGET     = $(DIR_INFO)/$(STAGE_ORDER)_$(STAGE)/$(THISAPP)
+
+# patches 1 to 7 are together
+PATCH1    := $(THISAPP)-fixes-1.patch
+PATCH08   := $(PKG_NAME)42-008
+PATCH09   := $(PKG_NAME)42-009
+PATCH10   := $(PKG_NAME)42-010
+
+###############################################################################
+# Top-level Rules
+###############################################################################
+objects = $(DL_FILE) \
+	$(PATCH1) \
+	$(PATCH08).patch \
+	$(PATCH09).patch \
+	$(PATCH10).patch
+
+$(DL_FILE)			= $(DL_FROM)/$(DL_FILE)
+$(PATCH1)			= $(URL_LFS)/$(PKG_NAME)/$(PATCH1)
+$(PATCH08).patch		= $(DL_FROM)/$(THISAPP)-patches/$(PATCH08)
+$(PATCH09).patch		= $(DL_FROM)/$(THISAPP)-patches/$(PATCH09)
+$(PATCH10).patch		= $(DL_FROM)/$(THISAPP)-patches/$(PATCH10)
+
+$(DL_FILE)_MD5			= 3fb927c7c33022f1c327f14a81c0d4b0
+$(PATCH1)_MD5			= abae789c2807cb7c7c4c452fa3986f85
+$(PATCH08).patch_MD5		= 24c574bf6d6a581e300823d9c1276af6
+$(PATCH09).patch_MD5		= 4c5835f2fbab36c4292bb334977e5b6d
+$(PATCH10).patch_MD5		= 0a51602b535ef661ee707be6c8bdb373
+
+
+install : $(TARGET)
+
+check : $(patsubst %,$(DIR_CHK)/%,$(objects))
+
+download :$(patsubst %,$(DIR_DL)/%,$(objects))
+
+md5 : $(subst %,%_MD5,$(objects))
+
+###############################################################################
+# Downloading, checking, md5sum
+###############################################################################
+
+$(patsubst %,$(DIR_CHK)/%,$(objects)) :
+	@$(CHECK)
+
+$(patsubst %,$(DIR_DL)/%,$(objects)) :
+	@$(LOAD)
+
+$(subst %,%_MD5,$(objects)) :
+	@$(MD5)
+
+###############################################################################
+# Installation Details
+###############################################################################
+
+$(TARGET) : $(firstword $(MAKEFILE_LIST)) $(patsubst %,$(DIR_DL)/%,$(objects))
+	@$(PREBUILD)
+	@rm -rf $(DIR_APP) && cd $(DIR_SRC) && tar zxf $(DIR_DL)/$(DL_FILE)
+	cd $(DIR_APP) && patch -Np1 -i $(DIR_DL)/$(PATCH1)
+	cd $(DIR_APP) && patch -Np0 -i $(DIR_DL)/$(PATCH08).patch
+	cd $(DIR_APP) && patch -Np0 -i $(DIR_DL)/$(PATCH09).patch
+	cd $(DIR_APP) && patch -Np0 -i $(DIR_DL)/$(PATCH10).patch
+
+	# In bash-3.2, configure and configure.in are patched in that order
+	# if they are not in the same second, autoconf is called.
+	# Toolchain compilation fail if autoconf is not available on the building machine
+	# uncomment to protect against autoconf call if new patch require that
+	# cd $(DIR_APP) && touch configure
+
+ifeq "$(STAGE)" "toolchain"
+	cd $(DIR_APP) && ./configure	--prefix=/$(TOOLS_DIR) \
+					--without-bash-malloc \
+					--disable-nls
+	cd $(DIR_APP) && make
+ifeq "$(RUNNING_TEST)" "yes"
+	-cd $(DIR_APP) && make tests &> $(DIR_TEST)/$(THISAPP)-$(STAGE_ORDER).log
+endif
+	cd $(DIR_APP) && make install
+	cd $(DIR_APP) && ln -sf bash /$(TOOLS_DIR)/bin/sh
+endif
+
+ifeq "$(STAGE)" "base"
+	# build the right list of installed files even if we cheat for stage2 symlinks to toolchain
+	sed -i -e '/\.\/bin\/sh$$/d' -e '/\.\/bin\/bash$$/d' /usr/src/lsalr
+	cd $(DIR_APP) && ./configure	--prefix=/usr \
+					--bindir=/bin \
+					--without-bash-malloc \
+					--disable-nls \
+					--with-installed-readline
+	cd $(DIR_APP) && make
+ifeq "$(RUNNING_TEST)" "yes"
+	cd $(DIR_APP) && sed -i 's/LANG/LC_ALL/' tests/intl.tests
+	cd $(DIR_APP) && sed -i 's@tests@& </dev/tty@' tests/run-test
+	cd $(DIR_APP) && chown -R nobody ./
+	-cd $(DIR_APP) && su-tools nobody -s /bin/bash -c "make tests" &> $(DIR_TEST)/$(THISAPP)-$(STAGE_ORDER).log
+endif
+	cd $(DIR_APP) && make install
+	# contrary to LFS, do not try to 'exec /bin/bash --login +h' or it's hang
+endif
+
+	@rm -rf $(DIR_APP)
+	@$(POSTBUILD)

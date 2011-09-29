@@ -1,0 +1,14 @@
+Remove compilation timestamp inside libc-2.11.1.so so we could see when the binary is really different.
+
+--- glibc-2.7/csu/Makefile.old	2006-03-01 11:35:47.000000000 +0100
++++ glibc-2.7/csu/Makefile	2008-12-13 21:27:20.000000000 +0100
+@@ -223,8 +223,7 @@
+ 		   if [ -z "$$os" ]; then \
+ 		     os=Linux; \
+ 		   fi; \
+-		   printf '"Compiled on a %s %s system on %s.\\n"\n' \
+-			  "$$os" "$$version" "`date +%Y-%m-%d`";; \
++		   echo "\"Compiled on a $$os $$version system.\\n\"" ;; \
+ 	   *) ;; \
+ 	 esac; \
+ 	 files="$(all-Banner-files)";				\

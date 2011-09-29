@@ -1,0 +1,329 @@
+###############################################################################
+# This file is part of the IPCop Firewall.                                    #
+#                                                                             #
+# IPCop is free software; you can redistribute it and/or modify               #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation; either version 2 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# IPCop is distributed in the hope that it will be useful,                    #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with IPCop; if not, write to the Free Software                        #
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA    #
+#                                                                             #
+# Makefiles are based on LFSMake, which is                                    #
+# Copyright (C) 2002 Rod Roard <rod@sunsetsystems.com>                        #
+#                                                                             #
+# Modifications by:                                                           #
+# ??-12-2003 Mark Wormgoor < mark@wormgoor.com>                               #
+#          - Modified Makefile for IPCop build                                #
+#                                                                             #
+# $Id: gcc 5622 2011-04-16 19:58:24Z gespinasse $
+#                                                                             #
+###############################################################################
+
+###############################################################################
+# Definitions
+###############################################################################
+
+include Config
+
+PKG_NAME   = gcc
+VER        = 4.4.5
+HOST_ARCH  = all
+OTHER_SRC  = yes
+
+THISAPP    = $(PKG_NAME)-$(VER)
+DL_FILE    = $(THISAPP).tar.bz2
+DL_FROM    = $(URL_GNU)/$(PKG_NAME)/$(THISAPP)
+DIR_APP    = $(DIR_SRC)/$(THISAPP)
+
+CFLAGS     =
+CXXFLAGS   =
+LDFLAGS    =
+
+ifeq "$(STAGE)" "toolchain"
+	TARGET        = $(DIR_INFO)/$(STAGE_ORDER)_$(STAGE)/$(THISAPP)-pass$(PASS)
+endif
+
+ifeq "$(STAGE)" "base"
+	TARGET        = $(DIR_INFO)/$(STAGE_ORDER)_$(STAGE)/$(THISAPP)
+endif
+
+# awk does not work for this
+GMPVERSION = gmp-$(shell grep 'VER ' gmp | cut -d '=' -f2 | cut -d ' ' -f2 )
+MPFRVERSION = mpfr-$(shell grep 'VER ' mpfr | cut -d '=' -f2 | cut -d ' ' -f2 )
+MPFRPATCH := $(MPFRVERSION)-allpatches.patch
+
+PATCH1     = gcc-4.4.3-startfiles_fix-1.patch
+
+###############################################################################
+# Top-level Rules
+###############################################################################
+objects = $(DL_FILE) \
+		$(GMPVERSION).tar.bz2 \
+		$(MPFRVERSION).tar.xz \
+		$(MPFRPATCH) \
+		$(PATCH1)
+
+$(DL_FILE)				= $(DL_FROM)/$(DL_FILE)
+$(GMPVERSION).tar.bz2			= $(URL_GNU)/gmp/$(GMPVERSION).tar.bz2
+$(MPFRVERSION).tar.xz			= $(URL_GNU)/mpfr/$(MPFRVERSION).tar.xz
+$(MPFRPATCH)				= http://www.mpfr.org/$(MPFRVERSION)/allpatches
+$(PATCH1)				= $(URL_LFS)/$(PKG_NAME)/$(PATCH1)
+
+$(DL_FILE)_MD5				= 44b3192c4c584b9be5243d9e8e7e0ed1
+# weak : cut -d ' ' -f 3 rely only on ' = ' for gmp and mpfr _MD5
+$(GMPVERSION).tar.bz2_MD5		= $(shell sed -ne '/_MD5.*/p' gmp | sed -e '1!d' | cut -d ' ' -f 3)
+$(MPFRVERSION).tar.xz_MD5		= $(shell sed -ne '/_MD5.*/p' mpfr | sed -e '1!d' | cut -d ' ' -f 3)
+$(MPFRPATCH)_MD5			= $(shell sed -ne '/_MD5.*/p' mpfr | sed -e '2!d' | cut -d ' ' -f 3)
+$(PATCH1)_MD5				= 799ef1971350d2e3c794f2123f247cc6
+
+
+install : $(TARGET)
+
+check : $(patsubst %,$(DIR_CHK)/%,$(objects))
+
+download :$(patsubst %,$(DIR_DL)/%,$(objects))
+
+md5 : $(subst %,%_MD5,$(objects))
+
+###############################################################################
+# Downloading, checking, md5sum
+###############################################################################
+
+$(patsubst %,$(DIR_CHK)/%,$(objects)) :
+	@$(CHECK)
+
+$(patsubst %,$(DIR_DL)/%,$(objects)) :
+	@$(LOAD)
+
+$(subst %,%_MD5,$(objects)) :
+	@$(MD5)
+
+###############################################################################
+# Installation Details
+###############################################################################
+
+# TARGET_2 set build, host and target for toolchain pass 2 and base using <target-machine>-linux-gnu
+SETTINGS	= --build=$(TARGET_2) --host=$(TARGET_2) --target=$(TARGET_2)
+
+# test both standard unix and a second time with -fstack-protector flag except alpha that does not support that
+# should try too with -m64 like debian but that fail actually (probably require a /lib64/libc )
+# -fstack-protector-all that we in fact use has more failures
+TESTTARGET	:= unix\{-fstack-protector\}
+
+ifeq "$(MACHINE)" "alpha"
+  ENABLETARGET	=
+  TUNEOPTIONS	= --disable-libssp --with-long-double-128
+  # alpha did not support -fstack-protector
+  TESTTARGET	:= unix
+endif
+ifeq "$(MACHINE)" "i486"
+  ENABLETARGET	= --enable-targets=x86_64-linux-gnu
+  TUNEOPTIONS	= --with-arch=$(MACHINE) --with-tune=pentium
+endif
+ifeq "$(MACHINE)" "ppc"
+  ENABLETARGET	= --enable-targets=powerpc-linux,powerpc64-linux
+  TUNEOPTIONS	= --with-cpu=default32 --with-long-double-128 --enable-secureplt --disable-softfloat
+endif
+ifeq "$(MACHINE)" "sparc"
+  ENABLETARGET	= --enable-targets=sparc64-linux-gnu
+  TUNEOPTIONS	= --with-long-double-128
+  GCCOPTION	= -m32
+endif
+
+$(TARGET) : $(patsubst %,$(DIR_DL)/%,$(objects))
+	@$(PREBUILD)
+	@rm -rf $(DIR_APP) $(DIR_SRC)/gcc-build && cd $(DIR_SRC) && tar jxf $(DIR_DL)/$(DL_FILE)
+	# fix a test error
+	cd $(DIR_APP) && sed -i 's/getline/get_line/' libiberty/testsuite/test-demangle.c
+	# debian
+	#cd $(DIR_APP) && patch -Np2 -i $(DIR_PATCHES)/gcc-4.4_fix-warnings.patch
+	cd $(DIR_APP) && patch -Np2 -i $(DIR_PATCHES)/gcc-4.4.4_sparc-force-cpu.patch
+
+	@mkdir $(DIR_SRC)/gcc-build
+
+ifeq "$(STAGE)" "toolchain"
+	cd $(DIR_APP) && tar jxf $(DIR_DL)/$(GMPVERSION).tar.bz2
+	cd $(DIR_APP) && mv $(GMPVERSION) gmp
+	cd $(DIR_APP) && xz -dc $(DIR_DL)/$(MPFRVERSION).tar.xz | tar xf -
+	cd $(DIR_APP) && mv $(MPFRVERSION) mpfr
+	cd $(DIR_APP)/mpfr && patch -Np1 -i $(DIR_DL)/$(MPFRPATCH)
+
+ifeq "$(PASS)" "1"
+	# --disable-shared is mandatory to prevent a build failure later
+	cd $(DIR_SRC)/gcc-build &&			\
+		../$(THISAPP)/configure			\
+			--target=$(LFS_TGT)		\
+			--prefix=/$(TOOLS_DIR)		\
+			--disable-nls			\
+			--disable-shared		\
+			--disable-decimal-float		\
+			--disable-threads		\
+			--disable-libmudflap		\
+			--disable-libssp		\
+			--disable-libgomp		\
+			--enable-languages=c		\
+			--without-ppl			\
+			--without-cloog
+	cd $(DIR_SRC)/gcc-build && make -j $(PARALLELISM)
+	cd $(DIR_SRC)/gcc-build && make install
+	# hacked with -m32 (2 in 1 DIY instruction) to support arch that build fine (x86 and ppc) and sparc64
+	# end of http://refbuild.diy-linux.org/temptools2.html#tt2-gcc-pass1
+	ln -vs libgcc.a `$(LFS_TGT)-gcc $(GCCOPTION) -print-libgcc-file-name | sed 's/libgcc/&_eh/'`
+	# we use --build on binutils, gcc, glibc and the full triplet is used to compile those packages
+	ln -sf ccache /$(TOOLS_DIR)/usr/bin/$(LFS_TGT)-gcc
+	ln -sf ccache /$(TOOLS_DIR)/usr/bin/$(LFS_TGT)-g++
+	ln -sf ccache /$(TOOLS_DIR)/usr/bin/$(LFS_TGT)-cc
+	ln -sf ccache /$(TOOLS_DIR)/usr/bin/$(LFS_TGT)-c++
+endif
+
+ifeq "$(PASS)" "2"
+	# restore working --prefix on gcc-4 for startfiles
+	cd $(DIR_APP) && patch -Np1 -i $(DIR_DL)/$(PATCH1)
+	# prevent fixinclude from running
+	cd $(DIR_APP) && sed -i 's@\./fixinc\.sh@-c true@' gcc/Makefile.in
+ifeq "$(MACHINE)" "i486"
+	# build same as with bootstrap (i486 only)
+	cd $(DIR_APP) && sed -i 's/^T_CFLAGS =$$/& -fomit-frame-pointer/' gcc/Makefile.in
+endif
+	# header file name differ between arch inside directories (search for linker to find the file)
+	# see LFS book, chapter 5.11 GCC-4 Pass 2 for info
+	cd $(DIR_APP) && \
+		for HEADER in alpha/linux-elf.h i386/linux.h rs6000/sysv4.h sparc/linux.h; do \
+			sed -i.bak "s@$(LINKER)@/$(TOOLS_DIR)&@" gcc/config/$$HEADER; \
+			cat $(DIR_SRC)/config/gcc/startfiles >>gcc/config/$$HEADER; \
+		done
+
+	# Only pixman tests and gettext may use openmp/libgomp, so disable that
+	# mudflap is not used
+	cd $(DIR_SRC)/gcc-build &&				\
+		CC="$(LFS_TGT)-gcc -B/$(TOOLS_DIR)/lib/"	\
+		AR=$(LFS_TGT)-ar				\
+		RANLIB=$(LFS_TGT)-ranlib			\
+		../$(THISAPP)/configure				\
+			--prefix=/$(TOOLS_DIR)			\
+			--with-local-prefix=/$(TOOLS_DIR)	\
+			--disable-nls				\
+			--enable-clocale=gnu			\
+			--enable-shared				\
+			--enable-threads=posix			\
+			--enable-__cxa_atexit			\
+			--enable-languages=c,c++		\
+			--disable-libstdcxx-pch			\
+			--disable-libmudflap			\
+			--disable-libgomp			\
+			$(SETTINGS)				\
+			$(TUNEOPTIONS)				\
+			--disable-bootstrap			\
+			--without-ppl				\
+			--without-cloog
+
+	cd $(DIR_SRC)/gcc-build && make -j $(PARALLELISM)
+	cd $(DIR_SRC)/gcc-build && make install
+	ln -vs gcc /$(TOOLS_DIR)/bin/cc
+
+	# test basic compiler behavior and control the right $(LINKER) is used
+	cd $(DIR_SRC) && echo 'main(){}' > dummy.c
+	cd $(DIR_SRC) && $(TARGET_2)-gcc -B/$(TOOLS_DIR)/lib dummy.c
+	cd $(DIR_SRC) && readelf -l a.out | grep ": /$(TOOLS_DIR)$(LINKER)"
+	cd $(DIR_SRC) && rm dummy.c a.out
+
+	# save the specs
+	# - for testing final gcc without hardened options
+	# - much easier to repackage toolchain after adjust-toolchain
+	$(TARGET_2)-gcc -dumpspecs > /$(TOOLS_DIR)/etc/gcc-unhardened.specs
+	# we use --build on binutils, gcc, glibc and the full triplet is used to compile those packages
+	ln -sf ccache /$(TOOLS_DIR)/usr/bin/$(TARGET_2)-gcc
+	ln -sf ccache /$(TOOLS_DIR)/usr/bin/$(TARGET_2)-g++
+	ln -sf ccache /$(TOOLS_DIR)/usr/bin/$(TARGET_2)-cc
+	ln -sf ccache /$(TOOLS_DIR)/usr/bin/$(TARGET_2)-c++
+endif # PASS 2
+endif # toolchain
+
+ifeq "$(STAGE)" "base"
+	# build the right list of installed files even if we cheat for stage2 symlinks to toolchain
+	sed -i -e '/libgcc_s/d' -e '/libstdc++.so/d' /usr/src/lsalr
+	# like LFS, use binutils libiberty instead of gcc (did someone know the reason?)
+	cd $(DIR_APP) && sed -i 's/install_to_$$(INSTALL_DEST) //' libiberty/Makefile.in
+	# prevent fixinclude from running
+	cd $(DIR_APP) && sed -i 's@\./fixinc\.sh@-c true@' gcc/Makefile.in
+ifeq "$(MACHINE)" "i486"
+	# build same as with bootstrap (i486 only)
+	cd $(DIR_APP) && sed -i 's/^T_CFLAGS =$$/& -fomit-frame-pointer/' gcc/Makefile.in
+endif
+
+	# From HLFS
+	cd $(DIR_APP) && patch -Np1 -i $(DIR_PATCHES)/gcc-4.4.5_fortify-source-1.patch
+	cd $(DIR_APP) && patch -Np1 -i $(DIR_PATCHES)/gcc-4.4.5_fpie-1.patch
+	cd $(DIR_APP) && patch -Np1 -i $(DIR_PATCHES)/gcc-4.4.5_fstack-protector-1.patch
+	#cd $(DIR_APP) && patch -Np1 -i $(DIR_PATCHES)/gcc-4.4.5_defaults-format-security.patch
+
+	# we don't use openmp and mudflap, so disable that
+	cd $(DIR_SRC)/gcc-build &&				\
+		../$(THISAPP)/configure				\
+			--prefix=/usr				\
+			--libexecdir=/usr/lib			\
+			--disable-nls				\
+			--enable-checking=release		\
+			--enable-shared				\
+			--enable-threads=posix			\
+			--enable-__cxa_atexit			\
+			--enable-clocale=gnu			\
+			--enable-languages=c,c++		\
+			--disable-libmudflap			\
+			--disable-libgomp			\
+			$(SETTINGS)				\
+			$(TUNEOPTIONS)				\
+			--disable-bootstrap
+	cd $(DIR_SRC)/gcc-build && make -j $(PARALLELISM)
+
+ifneq "$(MACHINE)" "$(MACHINE_REAL)"
+	# we have a multilib compiler, use it to fake the MACHINE_REAL target without recompiling gcc.
+	# This allow linux CROSS_COMPILE to work.
+	(echo '#!/bin/sh'; echo 'exec gcc -m64 "$$@"';) > /bin/$(MACHINE_REAL)-linux-gnu-gcc
+	chmod +x /bin/$(MACHINE_REAL)-linux-gnu-gcc
+	# which is build later, so hardcode path to /usr/bin
+	for i in ar ld nm objcopy strip; do ln -sf /usr/bin/$$i /bin/$(MACHINE_REAL)-linux-gnu-$$i; done
+endif
+
+ifeq "$(RUNNING_TEST)" "yes"
+	# save hardened specs
+	cp /usr/src/gcc-build/gcc/specs /usr/src/gcc-build/gcc/gcc-hardened.specs
+	# and replace with unhardened spec for testing as some test does support hardening by default
+	sed -e 's@/$(TOOLS_DIR)$(LINKER)@$(LINKER)@g' \
+		-e '/\*startfile_prefix_spec:/{n;s@.*@/usr/lib/ @}' \
+		/$(TOOLS_DIR)/etc/gcc-unhardened.specs \
+		> /usr/src/gcc-build/gcc/specs
+	# Do not to stop on error in tests
+	# 6 gcc.c-torture/compile/limits-exprparen.c test fail if ulimit -s = 8192 and disappear with -s = 16384
+	# abi_check fail for unknow reason on all arch and nobody care (may work on 4.5)
+	# 5 libmudflap tests fail for everyone
+	# gcc.c-torture/compile/limits-blockid.c  -O0 fail twice on target unix/-fstack-protector
+	# Setting DEJAGNU_TIMEOUT from default 300 to 900 on an XP 2800+ remove the gcc.dg/gomp and g++.dg errors
+	# Add -v to RUNTESTFLAGS for more verbose tests (9 MB log per target_board)
+	# ulimit is a bash builtin and need bash -c to run on makefile
+	-cd /usr/src/gcc-build && \
+		bash -c "ulimit -s 16384; \
+			GCC_TOLERATE_ALWAYS_OVERFLOW=1 \
+			make -j 1 -k check \
+				DEJAGNU_TIMEOUT=900 \
+				RUNTESTFLAGS=\"--target_board=$(TESTTARGET)\"" \
+			&> $(DIR_TEST)/$(THISAPP)-$(STAGE_ORDER).log
+	-cd $(DIR_SRC)/gcc-build && ../gcc-$(VER)/contrib/test_summary >> $(DIR_TEST)/$(THISAPP)-summary-$(STAGE_ORDER).log
+	# now restore hardened specs
+	mv /usr/src/gcc-build/gcc/gcc-hardened.specs /usr/src/gcc-build/gcc/specs
+endif
+
+	cd $(DIR_SRC)/gcc-build && make install
+	ln -sfv ../usr/bin/cpp /lib
+	ln -sfv gcc /usr/bin/cc
+endif # base
+
+	@rm -rf $(DIR_APP) $(DIR_SRC)/gcc-build
+	@$(POSTBUILD)

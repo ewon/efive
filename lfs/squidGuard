@@ -1,0 +1,101 @@
+###############################################################################
+# This file is part of the IPCop Firewall.                                    #
+#                                                                             #
+# IPCop is free software; you can redistribute it and/or modify               #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation; either version 2 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# IPCop is distributed in the hope that it will be useful,                    #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with IPCop; if not, write to the Free Software                        #
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA    #
+#                                                                             #
+# Makefiles are based on LFSMake, which is                                    #
+# Copyright (C) 2002 Rod Roard <rod@sunsetsystems.com>                        #
+#                                                                             #
+# Modifications by: 
+#     2011-03-23 Perry Valdez <perryv@gmail.com> 
+#               - Modified Makefile for IPCop build
+#
+# $Id: squidGuard 5793 2011-08-16 13:35:20Z owes $
+#                                                                             #
+###############################################################################
+
+###############################################################################
+# Definitions
+###############################################################################
+
+include Config
+
+PKG_NAME   = squidGuard
+VER        = 1.5-beta
+HOST_ARCH  = all
+OTHER_SRC  = yes
+
+THISAPP    = $(PKG_NAME)-$(VER)
+DL_FILE    = $(THISAPP).tar.gz
+DL_FROM    = http://www.squidguard.org/Downloads/Devel
+DIR_APP    = $(DIR_SRC)/$(THISAPP)
+TARGET     = $(DIR_INFO)/$(STAGE_ORDER)_$(STAGE)/$(THISAPP)
+
+###############################################################################
+# Top-level Rules
+###############################################################################
+
+objects = $(DL_FILE)
+
+$(DL_FILE) = $(DL_FROM)/$(DL_FILE)
+
+$(DL_FILE)_MD5 = a15badd7f98f726f63b418a38f117283
+
+install : $(TARGET)
+
+check : $(patsubst %,$(DIR_CHK)/%,$(objects))
+
+download :$(patsubst %,$(DIR_DL)/%,$(objects))
+
+md5 : $(subst %,%_MD5,$(objects))
+
+###############################################################################
+# Downloading, checking, md5sum
+###############################################################################
+
+$(patsubst %,$(DIR_CHK)/%,$(objects)) :
+	@$(CHECK)
+
+$(patsubst %,$(DIR_DL)/%,$(objects)) :
+	@$(LOAD)
+
+$(subst %,%_MD5,$(objects)) :
+	@$(MD5)
+
+###############################################################################
+# Installation Details
+###############################################################################
+
+$(TARGET) : $(firstword $(MAKEFILE_LIST)) $(patsubst %,$(DIR_DL)/%,$(objects))
+	@$(PREBUILD)
+	@rm -rf $(DIR_APP) && cd $(DIR_SRC) && tar xf $(DIR_DL)/$(DL_FILE)
+
+	# Todo: URL filter CGI, redirect.cgi, modifications to proxy.cgi, initial config file, etc.
+
+	cd $(DIR_APP) && ./configure --with-squiduser=squid \
+				--prefix=/usr \
+				--with-sg-dbhome=/var/ipcop/proxy/blacklists \
+				--with-sg-config=/var/ipcop/proxy/squidGuard.conf \
+				--with-sg-logdir=/var/log \
+				--with-syslog=yes
+	cd $(DIR_APP) && make
+ifeq "$(RUNNING_TEST)" "yes"
+	# Do not to stop on error in tests
+	-cd $(DIR_APP) && make test &> $(DIR_TEST)/$(THISAPP)-$(STAGE_ORDER).log
+endif
+	cd $(DIR_APP) && make install
+
+	@rm -rf $(DIR_APP)
+	@$(POSTBUILD)

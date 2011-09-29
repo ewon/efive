@@ -1,0 +1,21 @@
+## libpng-1.5.4
+##
+#usr/bin/libpng-config
+#usr/include/libpng15
+#usr/include/libpng15/png.h
+#usr/include/libpng15/pngconf.h
+#usr/include/libpng15/pnglibconf.h
+#usr/include/png.h
+#usr/include/pngconf.h
+#usr/include/pnglibconf.h
+#usr/lib/libpng.la
+usr/lib/libpng.so
+#usr/lib/libpng15.la
+usr/lib/libpng15.so
+usr/lib/libpng15.so.15
+usr/lib/libpng15.so.15.4.0
+#usr/lib/pkgconfig/libpng.pc
+#usr/lib/pkgconfig/libpng15.pc
+#usr/share/man/man3/libpng.3
+#usr/share/man/man3/libpngpf.3
+#usr/share/man/man5/png.5

@@ -1,0 +1,26 @@
+## rrdtool-1.4.4
+##
+#usr/bin/rrdcached
+#usr/bin/rrdcgi
+usr/bin/rrdtool
+#usr/bin/rrdupdate
+#usr/lib/librrd.la
+usr/lib/librrd.so
+usr/lib/librrd.so.4
+usr/lib/librrd.so.4.1.4
+#usr/lib/librrd_th.la
+usr/lib/librrd_th.so
+usr/lib/librrd_th.so.4
+usr/lib/librrd_th.so.4.1.4
+#usr/lib/perl5/site_perl/PERLVER/RRDp.pm
+usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/RRDs.pm
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/RRDp
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/RRDp/.packlist
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/RRDs
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/RRDs/.packlist
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/RRDs/RRDs.bs
+usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/RRDs/RRDs.so
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/ntmake.pl
+#usr/share/man/man3/RRDp.3
+#usr/share/man/man3/RRDs.3
+var/log/rrd

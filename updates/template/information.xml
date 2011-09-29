@@ -1,0 +1,11 @@
+<ipcop>
+    <update>
+        <version>UPGRADEVERSION</version>
+        <releasedate>2010-mm-dd</releasedate>
+        <size>0</size>
+        <description>Description (needs modification, shortly before release at the latest).</description>
+        <previousversion>PREVIOUSVERSION</previousversion>
+        <installdate>INSTALLDATE</installdate>
+        <latest />
+    </update>
+</ipcop>

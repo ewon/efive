@@ -1,0 +1,104 @@
+###############################################################################
+# This file is part of the IPCop Firewall.                                    #
+#                                                                             #
+# IPCop is free software; you can redistribute it and/or modify               #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation; either version 2 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# IPCop is distributed in the hope that it will be useful,                    #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with IPCop; if not, write to the Free Software                        #
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA    #
+#                                                                             #
+# Makefiles are based on LFSMake, which is                                    #
+# Copyright (C) 2002 Rod Roard <rod@sunsetsystems.com>                        #
+#                                                                             #
+# Modifications by:                                                           #
+# ??-12-2003 Mark Wormgoor < mark@wormgoor.com>                               #
+#          - Modified Makefile for IPCop build                                #
+#                                                                             #
+# $Id: flex 4407 2010-03-24 07:16:27Z gespinasse $
+#                                                                             #
+###############################################################################
+
+###############################################################################
+# Definitions
+###############################################################################
+
+include Config
+
+PKG_NAME   = flex
+VER        = 2.5.35
+HOST_ARCH  = all
+OTHER_SRC  = yes
+
+THISAPP    = flex-$(VER)
+DL_FILE    = $(THISAPP).tar.bz2
+DL_FROM    = $(URL_SFNET)/flex
+DIR_APP    = $(DIR_SRC)/$(THISAPP)
+TARGET     = $(DIR_INFO)/$(STAGE_ORDER)_$(STAGE)/$(THISAPP)
+
+PATCH1     = $(THISAPP)-gcc44-1.patch
+
+###############################################################################
+# Top-level Rules
+###############################################################################
+
+objects		= $(DL_FILE) \
+		$(PATCH1)
+
+$(DL_FILE)	= $(DL_FROM)/$(DL_FILE)
+$(PATCH1)	= $(URL_LFS)/$(PKG_NAME)/$(PATCH1)
+
+$(DL_FILE)_MD5	= 10714e50cea54dc7a227e3eddcd44d57
+$(PATCH1)_MD5	= ad9109820534278c6dd0898178c0788f
+
+install : $(TARGET)
+
+check : $(patsubst %,$(DIR_CHK)/%,$(objects))
+
+download :$(patsubst %,$(DIR_DL)/%,$(objects))
+
+md5 : $(subst %,%_MD5,$(objects))
+
+###############################################################################
+# Downloading, checking, md5sum
+###############################################################################
+
+$(patsubst %,$(DIR_CHK)/%,$(objects)) :
+	@$(CHECK)
+
+$(patsubst %,$(DIR_DL)/%,$(objects)) :
+	@$(LOAD)
+
+$(subst %,%_MD5,$(objects)) :
+	@$(MD5)
+
+###############################################################################
+# Installation Details
+###############################################################################
+
+$(TARGET) : $(firstword $(MAKEFILE_LIST)) $(patsubst %,$(DIR_DL)/%,$(objects))
+	@$(PREBUILD)
+	@rm -rf $(DIR_APP) && cd $(DIR_SRC) && tar jxf $(DIR_DL)/$(DL_FILE)
+	cd $(DIR_APP) && patch -Np1 -i $(DIR_DL)/$(PATCH1)
+
+	cd $(DIR_APP) && ./configure --prefix=/usr
+	cd $(DIR_APP) && make -j $(PARALLELISM)
+ifeq "$(RUNNING_TEST)" "yes"
+	# no test should fail
+	cd $(DIR_APP) && make check &> $(DIR_TEST)/$(THISAPP)-$(STAGE_ORDER).log
+endif
+	cd $(DIR_APP) && make install
+	ln -sfv libfl.a /usr/lib/libl.a
+	echo -ne "#!/bin/sh\n# Begin /usr/bin/lex\n\nexec /usr/bin/flex -l \"\$$@\"\n\n# End /usr/bin/lex" > \
+		/usr/bin/lex
+	chmod -v 755 /usr/bin/lex
+
+	@rm -rf $(DIR_APP)
+	@$(POSTBUILD)

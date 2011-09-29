@@ -1,0 +1,50 @@
+# svn diff -r 5457:5459 > ../gnupg-1.4.11_bug1179-minimal.patch
+Index: checks/ChangeLog
+===================================================================
+--- checks/ChangeLog	(revision 5457)
++++ checks/ChangeLog	(revision 5459)
+@@ -1,3 +1,8 @@
++2010-10-19  David Shaw  <dshaw@jabberwocky.com>
++
++	* armor.test: Tweak the bug 1179 test to only run if Twofish is
++	included in the program.  The sample message requires Twofish.
++
+ 2010-05-12  Werner Koch  <wk@g10code.com>
+ 
+ 	* armor.test: Extend to test bug 1179.
+Index: checks/armor.test
+===================================================================
+--- checks/armor.test	(revision 5457)
++++ checks/armor.test	(revision 5459)
+@@ -739,16 +739,20 @@
+ # armor filter gpg swalled the CRC line and passed the '-----END...'
+ # line on to the decryption layer.
+ 
+-i=alpha_seckey
+-info "importing: $i"
+-eval "(IFS=; echo \"\$$i\")" >x
+-$GPG --import x || true
++# Can only perform this test if we have Twofish
+ 
+-i=nopad_armored_msg
+-info "checking: $i"
+-eval "(IFS=; echo \"\$$i\")" >x
+-if echo "abc" | $GPG  --passphrase-fd 0 -o - x > /dev/null ; then
+-   :
+-else
+-   error "bug#1179 is back in town"
++if $GPG --with-colons --list-config ciphername | grep TWOFISH > /dev/null 2>/dev/null ; then
++    i=alpha_seckey
++    info "importing: $i"
++    eval "(IFS=; echo \"\$$i\")" >x
++    $GPG --import x || true
++
++    i=nopad_armored_msg
++    info "checking: $i"
++    eval "(IFS=; echo \"\$$i\")" >x
++    if echo "abc" | $GPG  --passphrase-fd 0 -o - x > /dev/null ; then
++	:
++    else
++	error "bug#1179 is back in town"
++    fi
+ fi

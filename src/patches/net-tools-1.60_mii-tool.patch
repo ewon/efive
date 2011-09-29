@@ -1,0 +1,96 @@
+mii-tool without any parameters only scans for eth%d devices.
+This misses (among other things) devices that are renamed by using udevs
+70-persistent-net.rules
+
+This patch makes mii-tool use the same for_all_interfaces method as used 
+in ifconfig. Apply on top of Debian net-tools_1.60-23.diff.gz patchset.
+
+--- net-tools-1.60/Makefile	2009-06-12 12:39:13.000000000 +0200
++++ net-tools_mii-tool/Makefile	2009-06-12 12:38:32.000000000 +0200
+@@ -218,7 +218,7 @@
+ 		$(CC) $(LDFLAGS) -o ipmaddr ipmaddr.o $(NLIB) $(RESLIB)
+ 
+ mii-tool:	mii-tool.o
+-		$(CC) $(LDFLAGS) -o mii-tool mii-tool.o
++		$(CC) $(LDFLAGS) -o mii-tool mii-tool.o $(NLIB)
+ 
+ installbin:
+ 	install -m 0755 -d ${BASEDIR}/sbin
+--- net-tools-1.60/mii-tool.c	2009-06-12 13:34:32.000000000 +0200
++++ net-tools_mii-tool/mii-tool.c	2009-06-12 13:37:34.000000000 +0200
+@@ -31,6 +31,8 @@
+ 
+ static char Version[] = "$Id: mii-tool.c,v 1.9 2006/09/27 20:59:18 ecki Exp $\n(Author: David Hinds based on Donald Becker's mii-diag)";
+ 
++#include "config.h"
++
+ #include <unistd.h>
+ #include <stdlib.h>
+ #include <stdio.h>
+@@ -45,6 +47,7 @@
+ #include <sys/socket.h>
+ #include <sys/ioctl.h>
+ #include <net/if.h>
++#include <net/if_arp.h>
+ #include <linux/sockios.h>
+ 
+ #ifndef __GLIBC__
+@@ -54,6 +57,9 @@
+ #include "mii.h"
+ #include "version.h"
+ 
++#include "interface.h"
++#include "sockets.h"
++
+ #define MAX_ETH		8		/* Maximum # of interfaces */
+ 
+ /* Table of known MII's */
+@@ -109,8 +115,6 @@
+ static int nway_advertise = 0;
+ static int fixed_speed = 0;
+ static int override_phy = -1;
+-
+-static int skfd = -1;		/* AF_INET socket for ioctl() calls. */
+ static struct ifreq ifr;
+ 
+ /*--------------------------------------------------------------------*/
+@@ -409,6 +413,19 @@
+ 
+ /*--------------------------------------------------------------------*/
+ 
++int do_mii_print(struct interface *ife, void *cookie)
++{
++    int res;
++
++    res = do_if_fetch(ife); 
++    if ((res >= 0) && (ife->type == ARPHRD_ETHER)) {
++        do_one_xcvr(skfd, ife->name, 1);
++    }
++    return res;
++}
++
++/*--------------------------------------------------------------------*/
++
+ const char *usage =
+ "usage: %s [-VvRrwl] [-A media,... | -F media] [interface ...]\n"
+ "       -V, --version               display version information\n"
+@@ -477,11 +494,16 @@
+ 
+     /* No remaining args means show all interfaces. */
+     if (optind == argc) {
++        int opt_a = 1;
+ 	ret = 1;
+-	for (i = 0; i < MAX_ETH; i++) {
+-	    sprintf(s, "eth%d", i);
+-	    ret &= do_one_xcvr(skfd, s, 1);
++        /* Create a channel to the NET kernel. */
++        if ((skfd = sockets_open(0)) < 0) {
++            perror("socket");
++            exit(1);
+ 	}
++    	ret = for_all_interfaces(do_mii_print, &opt_a);
++        (void) close(skfd);
++
+ 	if (ret)
+ 	    fprintf(stderr, "no MII interfaces found\n");
+     } else {

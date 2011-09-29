@@ -1,0 +1,35 @@
+Submitted By: Matt Burgess <matthew at linuxfromscratch dot org>
+Date: 2010-06-27
+Initial Package Version: 5.10.1
+Origin: Not Submitted - LFS Specific
+Description: This patch adapts some hard-wired paths to the C library.
+             It uses the $prefix variable to locate the correct libc.
+             Fix one missing ${prefix} in original LFS patch
+
+
+
+diff -ur perl-5.10.1.orig/hints/linux.sh perl-5.10.1/hints/linux.sh
+--- perl-5.10.1.orig/hints/linux.sh	2009-02-12 23:58:12.000000000 +0100
++++ perl-5.10.1/hints/linux.sh	2011-06-27 21:53:47.000000000 +0200
+@@ -63,9 +63,9 @@
+ # We don't use __GLIBC__ and  __GLIBC_MINOR__ because they
+ # are insufficiently precise to distinguish things like
+ # libc-2.0.6 and libc-2.0.7.
+-if test -L /lib/libc.so.6; then
+-    libc=`ls -l /lib/libc.so.6 | awk '{print $NF}'`
+-    libc=/lib/$libc
++if test -L ${prefix}/lib/libc.so.6; then
++    libc=`ls -l ${prefix}/lib/libc.so.6 | awk '{print $NF}'`
++    libc=${prefix}/lib/$libc
+ fi
+ 
+ # Configure may fail to find lstat() since it's a static/inline
+@@ -436,3 +436,8 @@
+     libswanted="$libswanted pthread"
+     ;;
+ esac
++
++locincpth=""
++loclibpth=""
++glibpth="${prefix}/lib"
++usrinc="${prefix}/include"

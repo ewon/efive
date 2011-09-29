@@ -1,0 +1,36 @@
+--- rsyslog-4.4.2/threads.c.orig	2010-01-11 09:20:44.000000000 +0100
++++ rsyslog-4.4.2/threads.c	2010-01-11 09:27:23.000000000 +0100
+@@ -39,6 +39,8 @@
+ #include "threads.h"
+ #include "srUtils.h"
+ 
++static pthread_attr_t pthreadGlobalAttr;
++
+ /* linked list of currently-known threads */
+ static linkedList_t llThrds;
+ 
+@@ -221,7 +221,11 @@
+ 	pThis->pUsrThrdMain = thrdMain;
+ 	pThis->pAfterRun = afterRun;
+ 	pThis->bNeedsCancel = bNeedsCancel;
++
++	/* Give threads a smaller stack, 512 KiB should be sufficient */
++	pthread_attr_init(&pthreadGlobalAttr);
++	pthread_attr_setstacksize(&pthreadGlobalAttr, 512 * 1024);
+-	pthread_create(&pThis->thrdID, NULL, thrdStarter, pThis);
++	pthread_create(&pThis->thrdID, &pthreadGlobalAttr, thrdStarter, pThis);
+ 	CHKiRet(llAppend(&llThrds, NULL, pThis));
+ 
+ finalize_it:
+--- rsyslog-4.4.2/runtime/wtp.c.orig	2010-01-11 10:21:53.000000000 +0100
++++ rsyslog-4.4.2/runtime/wtp.c	2010-01-11 10:24:51.000000000 +0100
+@@ -422,6 +422,9 @@
+ 
+ 	pWti = pThis->pWrkr[i];
+ 	wtiSetState(pWti, WRKTHRD_RUNNING);
++
++	/* Give threads a smaller stack, 512 KiB should be sufficient */
++	pthread_attr_setstacksize(&pThis->attrThrd, 512 * 1024);
+ 	iState = pthread_create(&(pWti->thrdID), &pThis->attrThrd, wtpWorker, (void*) pWti);
+ 	ATOMIC_INC(&pThis->iCurNumWrkThrd, &pThis->mutCurNumWrkThrd); /* we got one more! */
+ 

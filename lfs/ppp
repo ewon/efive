@@ -1,0 +1,109 @@
+###############################################################################
+# This file is part of the IPCop Firewall.                                    #
+#                                                                             #
+# IPCop is free software; you can redistribute it and/or modify               #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation; either version 2 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# IPCop is distributed in the hope that it will be useful,                    #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with IPCop; if not, write to the Free Software                        #
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA    #
+#                                                                             #
+# Makefiles are based on LFSMake, which is                                    #
+# Copyright (C) 2002 Rod Roard <rod@sunsetsystems.com>                        #
+#                                                                             #
+# Modifications by:                                                           #
+# ??-12-2003 Mark Wormgoor < mark@wormgoor.com>                               #
+#          - Modified Makefile for IPCop build                                #
+#                                                                             #
+# $Id: ppp 4598 2010-05-21 15:03:46Z gespinasse $
+#                                                                             #
+###############################################################################
+
+###############################################################################
+# Definitions
+###############################################################################
+
+include Config
+
+PKG_NAME   = ppp
+VER        = 2.4.5
+HOST_ARCH  = all
+OTHER_SRC  = yes
+
+THISAPP    = $(PKG_NAME)-$(VER)
+DL_FILE    = $(THISAPP).tar.gz
+DL_FROM    = http://samba.org/ftp/ppp
+DIR_APP    = $(DIR_SRC)/$(THISAPP)
+TARGET     = $(DIR_INFO)/$(STAGE_ORDER)_$(STAGE)/$(THISAPP)
+
+###############################################################################
+# Top-level Rules
+###############################################################################
+
+objects = $(DL_FILE)
+
+$(DL_FILE) = $(DL_FROM)/$(DL_FILE)
+
+$(DL_FILE)_MD5 = 4621bc56167b6953ec4071043fe0ec57
+
+install : $(TARGET)
+
+check : $(patsubst %,$(DIR_CHK)/%,$(objects))
+
+download :$(patsubst %,$(DIR_DL)/%,$(objects))
+
+md5 : $(subst %,%_MD5,$(objects))
+
+###############################################################################
+# Downloading, checking, md5sum
+###############################################################################
+
+$(patsubst %,$(DIR_CHK)/%,$(objects)) :
+	@$(CHECK)
+
+$(patsubst %,$(DIR_DL)/%,$(objects)) :
+	@$(LOAD)
+
+$(subst %,%_MD5,$(objects)) :
+	@$(MD5)
+
+###############################################################################
+# Installation Details
+###############################################################################
+
+$(TARGET) : $(firstword $(MAKEFILE_LIST)) $(patsubst %,$(DIR_DL)/%,$(objects))
+	@$(PREBUILD)
+	@rm -rf $(DIR_APP) && cd $(DIR_SRC) && tar zxf $(DIR_DL)/$(DL_FILE)
+	# Logging should go to /var/log not /etc/*
+	cd $(DIR_APP) && sed -i -e "s+/etc/ppp/connect-errors+/var/log/connect-errors+" \
+				-e "s+/etc/ppp/resolv\.conf+/var/log/resolv\.conf+" pppd/pathnames.h
+
+	# TODO: do we still need/want this patch?
+	#cd $(DIR_APP) && patch -Np1 -i $(DIR_PATCHES)/ppp-2.4.1-oedod.patch
+
+	cd $(DIR_APP) && ./configure --prefix=/usr
+	cd $(DIR_APP) && sed -i -e 's/-O2/$(CFLAGS)/' chat/Makefile
+	cd $(DIR_APP) && sed -i -e 's/-O2/$(CFLAGS)/' pppd/plugins/Makefile
+	cd $(DIR_APP) && sed -i -e 's/-O2/$(CFLAGS)/' pppd/plugins/rp-pppoe/Makefile
+	cd $(DIR_APP) && sed -i -e 's/-O2/$(CFLAGS)/' pppd/plugins/pppoatm/Makefile
+	cd $(DIR_APP) && sed -i -e 's/-O2/$(CFLAGS)/' pppd/plugins/radius/Makefile
+	cd $(DIR_APP) && sed -i -e 's/-O2/$(CFLAGS)/' pppd/Makefile
+	cd $(DIR_APP) && make -j $(PARALLELISM)
+	cd $(DIR_APP) && make install
+
+	touch /var/log/connect-errors
+	mkdir -p /etc/ppp
+	cp $(DIR_SRC)/config/ppp/* /etc/ppp
+	chmod 755 /etc/ppp/{dialer,ip-up,ip-down}
+	ln -sf /var/ipcop/ppp/secrets /etc/ppp/pap-secrets
+	ln -sf /var/ipcop/ppp/secrets /etc/ppp/chap-secrets
+
+	@rm -rf $(DIR_APP)
+	@$(POSTBUILD)

@@ -1,0 +1,24 @@
+## GD-2.44
+##
+#usr/bin/bdf2gdfont.pl
+#usr/lib/perl5/PERLVER/MACHINE-linux/perllocal.pod
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/GD
+usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/GD.pm
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/GD/Group.pm
+usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/GD/Image.pm
+usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/GD/Polygon.pm
+usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/GD/Polyline.pm
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/GD/Simple.pm
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/GD
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/GD/.packlist
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/GD/GD.bs
+usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/GD/GD.so
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/GD/autosplit.ix
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/qd.pl
+#usr/share/man/man1/bdf2gdfont.pl.1
+#usr/share/man/man3/GD.3
+#usr/share/man/man3/GD::Image.3
+#usr/share/man/man3/GD::Polygon.3
+#usr/share/man/man3/GD::Polyline.3
+#usr/share/man/man3/GD::Simple.3

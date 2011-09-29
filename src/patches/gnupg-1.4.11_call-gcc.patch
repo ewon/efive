@@ -1,0 +1,30 @@
+Call gcc directly to build assembly files, so that CFLAGS which are needed
+during preprocessing (-DPIC) get properly passed to the preprocessor.
+
+--- gnupg-1.4.1/mpi/Makefile.am	2005-03-11 05:27:02.000000000 -0500
++++ gnupg-1.4.1/mpi/Makefile.am	2005-03-15 23:47:29.000000000 -0500
+@@ -71,9 +71,14 @@
+ 
+ # cancel the default rules used by libtool which do not really
+ # work and add one to cpp .S files
++if USING_GCC
++.S.o:
++	 $(COMPILE) $(AM_CCASFLAGS) -c $<
++else
+ .S.o:
+ 	 $(CPP) $(INCLUDES) $(DEFS) $< | grep -v '^#' > _$*.s
+ 	 $(COMPILE) $(AM_CCASFLAGS) -c _$*.s
+ 	 mv -f _$*.o $*.o
++endif
+ 
+ .S.lo:
+--- gnupg-1.4.1/configure.ac	2005-03-15 10:51:52.000000000 -0500
++++ gnupg-1.4.1/configure.ac	2005-03-15 23:47:29.000000000 -0500
+@@ -1232,6 +1232,7 @@
+ 
+ AM_CONDITIONAL(CROSS_COMPILING, test x$cross_compiling = xyes)
+ 
++AM_CONDITIONAL(USING_GCC, test x$GCC = xyes)
+ 
+ # add some extra libs here so that previous tests don't fail for
+ # mysterious reasons - the final link step should bail out. 

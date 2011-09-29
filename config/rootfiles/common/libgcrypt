@@ -1,0 +1,13 @@
+## libgcrypt 1.4.6
+##
+#usr/bin/dumpsexp
+#usr/bin/hmac256
+#usr/bin/libgcrypt-config
+#usr/include/gcrypt-module.h
+#usr/include/gcrypt.h
+#usr/lib/libgcrypt.la
+usr/lib/libgcrypt.so
+usr/lib/libgcrypt.so.11
+usr/lib/libgcrypt.so.11.6.0
+#usr/share/aclocal/libgcrypt.m4
+#usr/share/info/gcrypt.info

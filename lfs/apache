@@ -1,0 +1,138 @@
+###############################################################################
+# This file is part of the IPCop Firewall.                                    #
+#                                                                             #
+# IPCop is free software; you can redistribute it and/or modify               #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation; either version 2 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# IPCop is distributed in the hope that it will be useful,                    #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with IPCop; if not, write to the Free Software                        #
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA    #
+#                                                                             #
+# Makefiles are based on LFSMake, which is                                    #
+# Copyright (C) 2002 Rod Roard <rod@sunsetsystems.com>                        #
+#                                                                             #
+# Modifications by:                                                           #
+# ??-12-2003 Mark Wormgoor < mark@wormgoor.com>                               #
+#          - Modified Makefile for IPCop build                                #
+#                                                                             #
+# $Id: apache 5848 2011-09-14 10:57:15Z owes $
+#                                                                             #
+###############################################################################
+
+###############################################################################
+# Definitions
+###############################################################################
+
+include Config
+
+PKG_NAME   = apache
+VER        = 2.2.21
+HOST_ARCH  = all
+OTHER_SRC  = yes
+
+THISAPP    = httpd-$(VER)
+DL_FILE    = $(THISAPP).tar.bz2
+DL_FROM    = http://www.apache.org/dist/httpd
+#DL_FROM    = http://archive.apache.org/dist/httpd
+DIR_APP    = $(DIR_SRC)/$(THISAPP)
+TARGET     = $(DIR_INFO)/$(STAGE_ORDER)_$(STAGE)/$(PKG_NAME)-$(VER)
+
+# Used to include same timestamp for all
+# This is httpd tar file date
+TIMESTAMP = "12-09-2011 19:02"
+
+###############################################################################
+# Top-level Rules
+###############################################################################
+
+objects = $(DL_FILE)
+
+$(DL_FILE)                        = $(DL_FROM)/$(DL_FILE)
+
+$(DL_FILE)_MD5                    = 1696ae62cd879ab1d4dd9ff021a470f2
+
+install : $(TARGET)
+
+check : $(patsubst %,$(DIR_CHK)/%,$(objects))
+
+download :$(patsubst %,$(DIR_DL)/%,$(objects))
+
+md5 : $(subst %,%_MD5,$(objects))
+
+###############################################################################
+# Downloading, checking, md5sum
+###############################################################################
+
+$(patsubst %,$(DIR_CHK)/%,$(objects)) :
+	@$(CHECK)
+
+$(patsubst %,$(DIR_DL)/%,$(objects)) :
+	@$(LOAD)
+
+$(subst %,%_MD5,$(objects)) :
+	@$(MD5)
+
+###############################################################################
+# Installation Details
+###############################################################################
+
+$(TARGET) : $(firstword $(MAKEFILE_LIST)) $(patsubst %,$(DIR_DL)/%,$(objects)) $(DIR_SRC)/config/httpd/*
+
+	@$(PREBUILD)
+	@rm -rf $(DIR_APP) && cd $(DIR_SRC) && tar jxf $(DIR_DL)/$(DL_FILE)
+
+	# Use our own TIMESTAMP instead of __DATE__ and __TIME__ so everyone that compile has same md5
+	cd $(DIR_APP) && sed -i -e 's|server_built\[\] =.*|server_built[] = $(TIMESTAMP);|' server/buildmark.c
+
+	# use our customized layout
+	cp $(DIR_SRC)/config/httpd/config.layout $(DIR_APP)/config.layout
+
+	# --with-z does nothing unless we enable a feature that use compression like --enable-deflate
+	# apr_cv value are needed on old host (centos-5.5 kernel 2.6.18) to build same as more recent
+	# epoll_create1, dup3 were added on 2.6.27, accept4 to 2.6.28
+	cd $(DIR_APP) && ./configure \
+		--enable-layout=IPCop \
+		--disable-actions \
+		--disable-asis \
+		--disable-autoindex \
+		--disable-imagemap \
+		--disable-include \
+		--disable-negotiation \
+		--disable-static \
+		--disable-status \
+		--disable-userdir \
+		--enable-pie \
+		--enable-rewrite \
+		--enable-ssl \
+		--with-included-apr \
+		--with-pcre \
+		--with-z \
+		apr_cv_epoll_create1=yes \
+		apr_cv_dup3=yes \
+		apr_cv_accept4=yes \
+		apr_cv_sock_cloexec=yes
+
+	cd $(DIR_APP) && make -j $(PARALLELISM)
+	cd $(DIR_APP) && make install
+
+	cp -f $(DIR_SRC)/config/httpd/{httpd,port81,portgui}.conf    /etc/httpd/conf/
+	cp -f $(DIR_SRC)/config/httpd/hostname.conf /var/ipcop/main/hostname.conf
+	ln -sf /var/ipcop/main/hostname.conf        /etc/httpd/conf/
+
+	# files not needed to be listed on rootfile
+	# don't remove /home/httpd/build or rebuild will fail
+	rm -rf /etc/httpd/conf/extra
+	rm -rf /etc/httpd/conf/original
+	rm -rf /home/httpd/error
+	rm -rf /home/httpd/icons
+	rm -rf /home/httpd/manual
+
+	@rm -rf $(DIR_APP)
+	@$(POSTBUILD)

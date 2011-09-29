@@ -1,0 +1,10 @@
+## Digest-SHA1-2.10
+##
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/Digest
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/Digest/SHA1
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/Digest/SHA1/SHA1.bs
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/Digest/SHA1/SHA1.so
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/auto/Digest/SHA1/.packlist
+#usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/Digest
+usr/lib/perl5/site_perl/PERLVER/MACHINE-linux/Digest/SHA1.pm
+#usr/share/man/man3/Digest::SHA1.3

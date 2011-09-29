@@ -1,0 +1,503 @@
+cvs -z3 -d :pserver:anonymous@procps.cvs.sourceforge.net:/cvsroot/procps export -D NOW procps
+find procps -name .cvsignore* -ls -delete
+diff -ur procps-3.2.8 procps >procps_cvs-2011-06-25.patch
+
+diff -ur procps-3.2.8/Makefile procps/Makefile
+--- procps-3.2.8/Makefile	2009-05-10 20:50:48.000000000 +0200
++++ procps/Makefile	2011-02-28 03:51:09.000000000 +0100
+@@ -174,7 +174,7 @@
+ # want this rule first, use := on ALL, and ALL not filled in yet
+ all: do_all
+ 
+--include */module.mk
++-include proc/module.mk ps/module.mk
+ 
+ do_all:    $(ALL)
+ 
+diff -ur procps-3.2.8/NEWS procps/NEWS
+--- procps-3.2.8/NEWS	2009-05-10 21:45:02.000000000 +0200
++++ procps/NEWS	2011-02-28 08:09:11.000000000 +0100
+@@ -1,10 +1,18 @@
++procps-3.2.8 --> procps-3.2.9
++
++ps: "etimes" prints elapsed time as decimal seconds
++per-process swap info available on Linux 2.6.34
++HZ failure (constructor ordering issue)                   gen303120 603759
++possible to build with make 3.82               gen303120  -- thanks Elias Pipping
++top: fix an aliasing problem -- thanks David Owen
++
+ procps-3.2.7 --> procps-3.2.8
+ 
+ ps: allow "+" in sort specifications, as in man page     rh208217
+ ps: recognize SCHED_ISO and SCHED_IDLE
+ ps: document SCHED_BATCH and add a "see also" for stime
+ ps: man page less ambiguous
+-top: normal exit code should be 0          #341272 #354255 rh199174
++top: normal exit code should be 0     #341272 #354255 rh199174 suse493210
+ top: misc fixes
+ pgrep: usage error should exit with 2       #413383
+ vmstat: use EXIT_FAILURE -- thanks Yoshio Nakamura   #425492
+diff -ur procps-3.2.8/pgrep.c procps/pgrep.c
+--- procps-3.2.8/pgrep.c	2007-05-28 02:11:07.000000000 +0200
++++ procps/pgrep.c	2011-02-28 08:09:11.000000000 +0100
+@@ -574,7 +574,7 @@
+ 			opt_pidfile = strdup (optarg);
+ 			++criteria_count;
+ 			break;
+-		case 'G':   // Solaris: match rgid/rgroup
++		case 'G':   // Solaris/OpenBSD: match rgid/rgroup
+ 	  		opt_rgid = split_list (optarg, conv_gid);
+ 			if (opt_rgid == NULL)
+ 				usage (opt);
+@@ -591,7 +591,7 @@
+ //			break;
+ //		case 'N':   // FreeBSD: specify alternate namelist file (for us, System.map -- but we don't need it)
+ //			break;
+-		case 'P':   // Solaris: match by PPID
++		case 'P':   // Solaris/OpenBSD: match by PPID
+ 	  		opt_ppid = split_list (optarg, conv_num);
+ 			if (opt_ppid == NULL)
+ 				usage (opt);
+@@ -601,7 +601,7 @@
+ //			break;
+ //		case 'T':   // Solaris: match by "task ID" (probably not a Linux task)
+ //			break;
+-		case 'U':   // Solaris: match by ruid/rgroup
++		case 'U':   // Solaris/OpenBSD: match by ruid/rgroup
+ 	  		opt_ruid = split_list (optarg, conv_uid);
+ 			if (opt_ruid == NULL)
+ 				usage (opt);
+@@ -612,13 +612,13 @@
+ 			exit(EXIT_SUCCESS);
+ //		case 'c':   // Solaris: match by contract ID
+ //			break;
+-		case 'd':   // Solaris: change the delimiter
++		case 'd':   // Solaris/OpenBSD: change the delimiter
+ 			opt_delim = strdup (optarg);
+ 			break;
+-		case 'f':   // Solaris: match full process name (as in "ps -f")
++		case 'f':   // Solaris/OpenBSD: match full process name (as in "ps -f")
+ 			opt_full = 1;
+ 			break;
+-		case 'g':   // Solaris: match pgrp
++		case 'g':   // Solaris/OpenBSD: match pgrp
+ 	  		opt_pgrp = split_list (optarg, conv_pgrp);
+ 			if (opt_pgrp == NULL)
+ 				usage (opt);
+@@ -631,16 +631,16 @@
+ //			break;
+ //		case 'j':   // FreeBSD: restricted to the given jail ID
+ //			break;
+-		case 'l':   // Solaris: long output format (pgrep only) Should require -f for beyond argv[0] maybe?
++		case 'l':   // Solaris/OpenBSD: long output format (pgrep only) Should require -f for beyond argv[0] maybe?
+ 			opt_long = 1;
+ 			break;
+-		case 'n':   // Solaris: match only the newest
++		case 'n':   // Solaris/OpenBSD: match only the newest
+ 			if (opt_oldest|opt_negate|opt_newest)
+ 				usage (opt);
+ 			opt_newest = 1;
+ 			++criteria_count;
+ 			break;
+-		case 'o':   // Solaris: match only the oldest
++		case 'o':   // Solaris/OpenBSD: match only the oldest
+ 			if (opt_oldest|opt_negate|opt_newest)
+ 				usage (opt);
+ 			opt_oldest = 1;
+@@ -658,19 +658,19 @@
+ 				usage (opt);
+ 			++criteria_count;
+ 			break;
+-		case 'u':   // Solaris: match by euid/egroup
++		case 'u':   // Solaris/OpenBSD: match by euid/egroup
+ 	  		opt_euid = split_list (optarg, conv_uid);
+ 			if (opt_euid == NULL)
+ 				usage (opt);
+ 			++criteria_count;
+ 			break;
+-		case 'v':   // Solaris: as in grep, invert the matching (uh... applied after selection I think)
++		case 'v':   // Solaris/OpenBSD: as in grep, invert the matching (uh... applied after selection I think)
+ 			if (opt_oldest|opt_negate|opt_newest)
+ 				usage (opt);
+ 	  		opt_negate = 1;
+ 			break;
+ 		// OpenBSD -x, being broken, does a plain string
+-		case 'x':   // Solaris: use ^(regexp)$ in place of regexp (FreeBSD too)
++		case 'x':   // Solaris/OpenBSD: use ^(regexp)$ in place of regexp (FreeBSD too)
+ 			opt_exact = 1;
+ 			break;
+ //		case 'z':   // Solaris: match by zone ID
+diff -ur procps-3.2.8/proc/readproc.c procps/proc/readproc.c
+--- procps-3.2.8/proc/readproc.c	2006-06-16 10:18:13.000000000 +0200
++++ procps/proc/readproc.c	2010-05-18 09:02:03.000000000 +0200
+@@ -77,7 +77,7 @@
+ // (leave the colon and newline) So "Pid:\n" and "Threads:\n"
+ // would be lines in the file. (no quote, no escape, etc.)
+ //
+-// Watch out for name size in the status_table_struct (grrr, expanding)
++// In the status_table_struct watch out for name size (grrr, expanding)
+ // and the number of entries (we mask with 63 for now). The table
+ // must be padded out to 64 entries, maybe 128 in the future.
+ 
+@@ -86,62 +86,81 @@
+     long Tgid = 0;
+     long Pid = 0;
+ 
++  // 128 entries because we trust the kernel to use ASCII names
+   static const unsigned char asso[] =
+     {
+-      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+-      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+-      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+-      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+-      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+-      61, 61, 61, 61, 61, 61, 61, 61, 15, 61,
+-      61, 61, 61, 61, 61, 61, 30,  3,  5,  5,
+-      61,  5, 61,  8, 61, 61,  3, 61, 10, 61,
+-       6, 61, 13,  0, 30, 25,  0, 61, 61, 61,
+-      61, 61, 61, 61, 61, 61, 61,  3, 61, 13,
+-       0,  0, 61, 30, 61, 25, 61, 61, 61,  0,
+-      61, 61, 61, 61,  5, 61,  0, 61, 61, 61,
+-       0, 61, 61, 61, 61, 61, 61, 61
++      64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
++      64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
++      64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
++      64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
++      64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
++      64, 64, 64, 64, 64, 64, 64, 64, 28, 64,
++      64, 64, 64, 64, 64, 64,  8, 25, 23, 25,
++       6, 25,  0,  3, 64, 64,  3, 64, 25, 64,
++      20,  1,  1,  5,  0, 30,  0,  0, 64, 64,
++      64, 64, 64, 64, 64, 64, 64,  3, 64,  0,
++       0, 18, 64, 10, 64, 10, 64, 64, 64, 20,
++      64, 20,  0, 64, 25, 64,  3, 15, 64,  0,
++      30, 64, 64, 64, 64, 64, 64, 64
+     };
+ 
+     static const status_table_struct table[] = {
+-      F(VmStk)
++      F(VmHWM)
+       NUL NUL
++      F(VmLck)
++      NUL
++      F(VmSwap)
++      F(VmRSS)
++      NUL
++      F(VmStk)
++      NUL
++      F(Tgid)
+       F(State)
+       NUL
+-      F(VmExe)
+-      F(ShdPnd)
++      F(VmLib)
++      NUL
++      F(VmSize)
++      F(SigQ)
+       NUL
++      F(SigIgn)
++      NUL
++      F(VmPTE)
++      F(FDSize)
++      NUL
++      F(SigBlk)
++      NUL
++      F(ShdPnd)
+       F(VmData)
+       NUL
+-      F(Name)
+-      NUL NUL
+-      F(VmRSS)
+-      NUL NUL
+-      F(VmLck)
+-      NUL NUL NUL
+-      F(Gid)
+-      F(Pid)
+-      NUL NUL NUL
+-      F(VmSize)
++      F(CapInh)
++      NUL
++      F(PPid)
+       NUL NUL
+-      F(VmLib)
++      F(CapBnd)
++      NUL
++      F(SigPnd)
+       NUL NUL
+-      F(PPid)
++      F(VmPeak)
+       NUL
+       F(SigCgt)
+-      NUL
++      NUL NUL
+       F(Threads)
+-      F(SigPnd)
+       NUL
+-      F(SigIgn)
++      F(CapPrm)
++      NUL NUL
++      F(Pid)
+       NUL
++      F(CapEff)
++      NUL NUL
++      F(Gid)
++      NUL
++      F(VmExe)
++      NUL NUL
+       F(Uid)
+-      NUL NUL NUL NUL NUL NUL NUL NUL NUL
+-      NUL NUL NUL NUL NUL
+-      F(Tgid)
+-      NUL NUL NUL NUL
+-      F(SigBlk)
+-      NUL NUL NUL
++      NUL
++      F(Groups)
++      NUL NUL
++      F(Name)
+     };
+ 
+ #undef F
+@@ -292,6 +311,20 @@
+     case_VmStk:
+         P->vm_stack = strtol(S,&S,10);
+         continue;
++    case_VmSwap: // Linux 2.6.34
++        P->vm_swap = strtol(S,&S,10);
++        continue;
++    case_CapBnd:
++    case_CapEff:
++    case_CapInh:
++    case_CapPrm:
++    case_FDSize:
++    case_Groups:
++    case_SigQ:
++    case_VmHWM: // 2005, peak VmRSS unless VmRSS is bigger
++    case_VmPTE:
++    case_VmPeak: // 2005, peak VmSize unless VmSize is bigger
++        continue;
+     }
+ 
+ #if 0
+diff -ur procps-3.2.8/proc/readproc.h procps/proc/readproc.h
+--- procps-3.2.8/proc/readproc.h	2006-06-16 10:01:21.000000000 +0200
++++ procps/proc/readproc.h	2010-05-18 09:02:03.000000000 +0200
+@@ -98,6 +98,7 @@
+ 	vm_rss,         // status          same as rss in kb
+ 	vm_data,        // status          data size
+ 	vm_stack,       // status          stack size
++	vm_swap,        // status          based on "swap ents", Linux 2.6.34
+ 	vm_exe,         // status          executable size
+ 	vm_lib,         // status          library size (all pages, not just used ones)
+ 	rtprio,		// stat            real-time priority
+Seulement dans procps-3.2.8/proc: smaps.c
+diff -ur procps-3.2.8/proc/sysinfo.c procps/proc/sysinfo.c
+--- procps-3.2.8/proc/sysinfo.c	2008-03-24 05:33:43.000000000 +0100
++++ procps/proc/sysinfo.c	2011-02-28 03:03:36.000000000 +0100
+@@ -212,6 +212,7 @@
+ static void init_libproc(void) __attribute__((constructor));
+ static void init_libproc(void){
+   have_privs = check_for_privs();
++  init_Linux_version();
+   // ought to count CPUs in /proc/stat instead of relying
+   // on glibc, which foolishly tries to parse /proc/cpuinfo
+   //
+diff -ur procps-3.2.8/proc/version.c procps/proc/version.c
+--- procps-3.2.8/proc/version.c	2003-01-29 02:11:43.000000000 +0100
++++ procps/proc/version.c	2011-02-28 03:03:36.000000000 +0100
+@@ -33,9 +33,8 @@
+ 
+ int linux_version_code;
+ 
+-static void init_Linux_version(void) __attribute__((constructor));
+-static void init_Linux_version(void) {
+-    static struct utsname uts;
++void init_Linux_version(void) {
++    struct utsname uts;
+     int x = 0, y = 0, z = 0;	/* cleared in case sscanf() < 3 */
+     
+     if (uname(&uts) == -1)	/* failure implies impending death */
+diff -ur procps-3.2.8/proc/version.h procps/proc/version.h
+--- procps-3.2.8/proc/version.h	2002-12-15 01:08:32.000000000 +0100
++++ procps/proc/version.h	2011-02-28 03:03:36.000000000 +0100
+@@ -20,6 +20,8 @@
+ extern int linux_version_code;		/* runtime version of LINUX_VERSION_CODE
+ 					   in /usr/include/linux/version.h */
+ 
++extern void init_Linux_version(void);
++
+ /* Convenience macros for composing/decomposing version codes */
+ #define LINUX_VERSION(x,y,z)   (0x10000*(x) + 0x100*(y) + z)
+ #define LINUX_VERSION_MAJOR(x) (((x)>>16) & 0xFF)
+diff -ur procps-3.2.8/ps/common.h procps/ps/common.h
+--- procps-3.2.8/ps/common.h	2005-01-27 04:43:22.000000000 +0100
++++ procps/ps/common.h	2011-02-28 08:09:11.000000000 +0100
+@@ -301,7 +301,7 @@
+ extern int             running_only;
+ extern int             screen_cols;
+ extern int             screen_rows;
+-extern unsigned long   seconds_since_boot;
++extern time_t          seconds_since_boot;
+ extern selection_node *selection_list;
+ extern unsigned        simple_select;
+ extern sort_node      *sort_list;
+diff -ur procps-3.2.8/ps/global.c procps/ps/global.c
+--- procps-3.2.8/ps/global.c	2005-10-30 01:43:34.000000000 +0200
++++ procps/ps/global.c	2011-02-28 08:09:11.000000000 +0100
+@@ -69,7 +69,7 @@
+ int             prefer_bsd_defaults = -1;
+ int             screen_cols = -1;
+ int             screen_rows = -1;
+-unsigned long   seconds_since_boot = -1;
++time_t          seconds_since_boot = -1;
+ selection_node *selection_list = (selection_node *)0xdeadbeef;
+ unsigned        simple_select = 0xffffffff;
+ sort_node      *sort_list = (sort_node *)0xdeadbeef; /* ready-to-use sort list */
+diff -ur procps-3.2.8/ps/output.c procps/ps/output.c
+--- procps-3.2.8/ps/output.c	2009-05-10 21:24:50.000000000 +0200
++++ procps/ps/output.c	2011-02-28 08:09:11.000000000 +0100
+@@ -76,8 +76,8 @@
+ 
+ static int wide_signals;  /* true if we have room */
+ 
+-static unsigned long seconds_since_1970;
+-static unsigned long time_of_boot;
++static time_t seconds_since_1970;
++static time_t time_of_boot;
+ static unsigned long page_shift;
+ 
+ 
+@@ -273,7 +273,15 @@
+ STIME	stime	hms or md time format
+ ***/
+ 
+-/* Source & destination are known. Return bytes or screen characters? */
++// Source & destination are known. Return bytes or screen characters?
++// Currently they match, but using UTF-8 or VT100 would break that.
++//
++//       OldLinux   FreeBSD    HPUX
++// ' '    '    '     '  '      '  '
++// 'L'    ' \_ '     '`-'      '  '
++// '+'    ' \_ '     '|-'      '  '
++// '|'    ' |  '     '| '      '  '
++//
+ static int forest_helper(char *restrict const outbuf){
+   char *p = forest_prefix;
+   char *q = outbuf;
+@@ -338,7 +346,7 @@
+   unsigned flags;
+   int rightward=max_rightward;
+ 
+-  if(forest_prefix){
++  if(forest_type){
+     int fh = forest_helper(outbuf);
+     endp += fh;
+     rightward -= fh;
+@@ -365,7 +373,7 @@
+   unsigned flags;
+   int rightward=max_rightward;
+   
+-  if(forest_prefix){
++  if(forest_type){
+     int fh = forest_helper(outbuf);
+     endp += fh;
+     rightward -= fh;
+@@ -390,7 +398,7 @@
+   char *endp = outbuf;
+   int rightward = max_rightward;
+   
+-  if(forest_prefix){
++  if(forest_type){
+     int fh = forest_helper(outbuf);
+     endp += fh;
+     rightward -= fh;
+@@ -422,6 +430,12 @@
+   return (int)(cp-outbuf);
+ }
+ 
++/* elapsed wall clock time in seconds */
++static int pr_etimes(char *restrict const outbuf, const proc_t *restrict const pp){
++  unsigned t = seconds_since_boot - (unsigned long)(pp->start_time / Hertz);
++  return snprintf(outbuf, COLWID, "%u", t);
++}
++
+ /* "Processor utilisation for scheduling."  --- we use %cpu w/o fraction */
+ static int pr_c(char *restrict const outbuf, const proc_t *restrict const pp){
+   unsigned long long total_time;   /* jiffies used by this process */
+@@ -945,7 +959,7 @@
+   str = ctime(&t);
+   if(str[8]==' ')  str[8]='0';
+   if(str[11]==' ') str[11]='0';
+-  if((unsigned long)t+60*60*24 > seconds_since_1970)
++  if((unsigned long)t+60*60*24 > (unsigned long)seconds_since_1970)
+     return snprintf(outbuf, COLWID, "%8.8s", str+11);
+   return snprintf(outbuf, COLWID, "  %6.6s", str+4);
+ }
+@@ -1321,6 +1335,7 @@
+ {"environ","ENVIRONMENT",pr_nop,      sr_nop,    11, ENV,    LNx, PO|UNLIMITED},
+ {"esp",       "ESP",     pr_esp,      sr_kstk_esp, 8,  0,    LNX, TO|RIGHT},
+ {"etime",     "ELAPSED", pr_etime,    sr_nop,    11,   0,    U98, ET|RIGHT}, /* was 7 wide */
++{"etimes",    "ELAPSED", pr_etimes,   sr_nop,     7,   0,    BSD, ET|RIGHT}, /* FreeBSD */
+ {"euid",      "EUID",    pr_euid,     sr_euid,    5,   0,    LNX, ET|RIGHT},
+ {"euser",     "EUSER",   pr_euser,    sr_euser,   8, USR,    LNX, ET|USER},
+ {"f",         "F",       pr_flag,     sr_flags,   1,   0,    XXX, ET|RIGHT}, /*flags*/
+diff -ur procps-3.2.8/ps/parser.c procps/ps/parser.c
+--- procps-3.2.8/ps/parser.c	2007-05-28 21:28:06.000000000 +0200
++++ procps/ps/parser.c	2011-02-28 08:09:11.000000000 +0100
+@@ -617,6 +617,10 @@
+       trace("c true command name\n");
+       bsd_c_option = 1;
+       break;
++//  case 'd':
++//    trace("d FreeBSD-style tree\n");
++//    forest_type = 'f';
++//    break;
+     case 'e':
+       trace("e environment\n");
+       bsd_e_option = 1;
+diff -ur procps-3.2.8/ps/ps.1 procps/ps/ps.1
+--- procps-3.2.8/ps/ps.1	2009-05-10 21:38:17.000000000 +0200
++++ procps/ps/ps.1	2011-02-28 08:09:11.000000000 +0100
+@@ -1003,6 +1003,11 @@
+ in\ the form\ [[dd\-]hh:]mm:ss.
+ T}
+ 
++etimes	ELAPSED	T{
++elapsed time since the process was started,
++in\ seconds.
++T}
++
+ euid	EUID	T{
+ effective user\ ID. (alias\ \fBuid\fR).
+ T}
+Seulement dans procps/ps: stacktrace.c
+Seulement dans procps: tmp-junk.c
+diff -ur procps-3.2.8/top.c procps/top.c
+--- procps-3.2.8/top.c	2007-05-28 18:04:00.000000000 +0200
++++ procps/top.c	2009-12-10 12:37:48.000000000 +0100
+@@ -2190,7 +2190,10 @@
+ // Value a window's name and make the associated group name.
+ static void win_names (WIN_t *q, const char *name)
+ {
+-   sprintf(q->rc.winname, "%.*s", WINNAMSIZ -1, name);
++   // Note that src==dst is illegal in sprintf.
++   // Failure: amd64, glibc 2.9-20081201, gcc 4.3.4
++   if(q->rc.winname != name)
++      sprintf(q->rc.winname, "%.*s", WINNAMSIZ -1, name);
+    sprintf(q->grpname, "%d:%.*s", q->winnum, WINNAMSIZ -1, name);
+ }
+ 
+Seulement dans procps: utmp.c
+diff -ur procps-3.2.8/vmstat.c procps/vmstat.c
+--- procps-3.2.8/vmstat.c	2007-05-28 02:14:57.000000000 +0200
++++ procps/vmstat.c	2011-02-28 08:09:11.000000000 +0100
+@@ -588,6 +588,9 @@
+     if ('-' ==(**argv)) {
+       switch (*(++(*argv))) {
+     
++      // NetBSD: -W is wide (adds pool page size, flags, usage, etc.)
++      // NetBSD: -t is content of vmtotal structure
++
+       case 'V':
+ 	display_version();
+ 	exit(0);

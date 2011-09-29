@@ -1,0 +1,80 @@
+###############################################################################
+# This file is part of the IPCop Firewall.                                    #
+#                                                                             #
+# IPCop is free software; you can redistribute it and/or modify               #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation; either version 2 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# IPCop is distributed in the hope that it will be useful,                    #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with IPCop; if not, write to the Free Software                        #
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA    #
+#                                                                             #
+# Makefiles are based on LFSMake, which is                                    #
+# Copyright (C) 2002 Rod Roard <rod@sunsetsystems.com>                        #
+#                                                                             #
+# Modifications by:                                                           #
+# ??-12-2003 Mark Wormgoor < mark@wormgoor.com>                               #
+#          - Modified Makefile for IPCop build                                #
+#                                                                             #
+# $Id: packages_list 4580 2010-05-18 04:52:58Z gespinasse $
+#                                                                             #
+###############################################################################
+
+###############################################################################
+# Definitions
+###############################################################################
+
+include Config
+
+PKG_NAME   = packages_list
+HOST_ARCH  = all
+
+THISAPP    = packages_list
+
+###############################################################################
+# Top-level Rules
+###############################################################################
+
+check :
+
+download :
+
+md5 :
+
+###############################################################################
+# Installation Details
+###############################################################################
+
+install :
+
+ifeq "$(PASS)" "1"
+	# this is include in cdrom doc
+	echo "Generating list of packages needed to compile ipcop." >> $(LOGFILE)
+	-rm -f $(LFS_BASEDIR)/doc/$(NAME)-$(VERSION)-packages-list.$(MACHINE).txt
+	for i in `ls -1tr $(DIR_INFO)/0{2,3,4}*/*`; do \
+		if [ -n $$i ]; then \
+			echo " * `basename $$i`" >> $(LFS_BASEDIR)/doc/$(NAME)-$(VERSION)-packages-list.$(MACHINE).txt; \
+		fi \
+	done
+endif
+
+ifeq "$(PASS)" "2"
+	echo "List of software packages used to build $(NAME) Version: $(VERSION) for $(MACHINE)" \
+		> $(LFS_BASEDIR)/doc/$(NAME)-$(VERSION)-packages-list.$(MACHINE).tmp
+	cat $(LFS_BASEDIR)/doc/$(NAME)-$(VERSION)-packages-list.$(MACHINE).txt  | sort \
+		>> $(LFS_BASEDIR)/doc/$(NAME)-$(VERSION)-packages-list.$(MACHINE).tmp
+	mv $(LFS_BASEDIR)/doc/$(NAME)-$(VERSION)-packages-list.$(MACHINE).tmp \
+		$(LFS_BASEDIR)/doc/$(NAME)-$(VERSION)-packages-list.$(MACHINE).txt
+	# packages-list is ready to be displayed for Trac wiki page
+
+	# ROOTFILES.txt does not allow to refer to files include by directory
+	echo "Generating files list from logs" >> $(LOGFILE)
+	tar tzf /installer/cdrom/ipcop-$(VERSION).tar.gz | \
+		sed -e 's|^\.\/||' -e '/^$$/d' | sort > $(LFS_BASEDIR)/doc/${NAME}-${VERSION}-all-files-list.${MACHINE}.txt
+endif

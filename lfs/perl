@@ -1,0 +1,159 @@
+###############################################################################
+# This file is part of the IPCop Firewall.                                    #
+#                                                                             #
+# IPCop is free software; you can redistribute it and/or modify               #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation; either version 2 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# IPCop is distributed in the hope that it will be useful,                    #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with IPCop; if not, write to the Free Software                        #
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA    #
+#                                                                             #
+# Makefiles are based on LFSMake, which is                                    #
+# Copyright (C) 2002 Rod Roard <rod@sunsetsystems.com>                        #
+#                                                                             #
+# Modifications by:                                                           #
+# ??-12-2003 Mark Wormgoor < mark@wormgoor.com>                               #
+#          - Modified Makefile for IPCop build                                #
+#                                                                             #
+# $Id: perl 5767 2011-08-06 13:15:06Z gespinasse $
+#                                                                             #
+###############################################################################
+
+###############################################################################
+# Definitions
+###############################################################################
+
+include Config
+
+PKG_NAME   = perl
+VER        = 5.10.1
+HOST_ARCH  = all
+OTHER_SRC  = yes
+
+THISAPP    = perl-$(VER)
+DL_FILE    = $(THISAPP).tar.bz2
+DL_FROM    = http://www.cpan.org/src
+DIR_APP    = $(DIR_SRC)/$(THISAPP)
+TARGET     = $(DIR_INFO)/$(STAGE_ORDER)_$(STAGE)/$(THISAPP)
+
+PATCH1     = $(THISAPP)-libc-2.patch
+PATCH2     = $(PKG_NAME)_$(VER)-17squeeze2.debian.tar.gz
+
+# Used to include same timestamp for everyone
+TIMESTAMP = "Jul 20 2011 20:00"
+
+###############################################################################
+# Top-level Rules
+###############################################################################
+
+objects = $(DL_FILE) \
+	$(PATCH2)
+
+$(DL_FILE)			= $(DL_FROM)/$(DL_FILE)
+$(PATCH2)			= $(URL_DEBIAN)/p/$(PKG_NAME)/$(PATCH2)
+
+$(DL_FILE)_MD5			= 82400c6d34f7b7b43d0196c76cd2bbb1
+$(PATCH2)_MD5			= 5642720990ea6ddbe1766cc05c7b5a10
+
+install : $(TARGET)
+
+check : $(patsubst %,$(DIR_CHK)/%,$(objects))
+
+download :$(patsubst %,$(DIR_DL)/%,$(objects))
+
+md5 : $(subst %,%_MD5,$(objects))
+
+###############################################################################
+# Downloading, checking, md5sum
+###############################################################################
+
+$(patsubst %,$(DIR_CHK)/%,$(objects)) :
+	@$(CHECK)
+
+$(patsubst %,$(DIR_DL)/%,$(objects)) :
+	@$(LOAD)
+
+$(subst %,%_MD5,$(objects)) :
+	@$(MD5)
+
+###############################################################################
+# Installation Details
+###############################################################################
+
+$(TARGET) : $(firstword $(MAKEFILE_LIST)) $(patsubst %,$(DIR_DL)/%,$(objects))
+	@$(PREBUILD)
+	@rm -rf $(DIR_APP) && cd $(DIR_SRC) && tar jxf $(DIR_DL)/$(DL_FILE)
+
+	cd $(DIR_APP) && tar zxf $(DIR_DL)/$(PATCH2)
+	# apply on debian order the patches not specific to debian
+	# first, remove -p1 from the patch list as lines break too on space on the for loop
+	cd $(DIR_APP) && sed -i 's/ -p1//' debian/patches/series
+	# debian/patches/debian contains Debian specific patches
+	# debian/patches/fixes contains 'generic' patches, usually from upstream
+	cd $(DIR_APP) && for patch in `cat debian/patches/series | grep -v '^debian'` ; do \
+		patch -Np1 -i debian/patches/$$patch; \
+	done
+	# patchlevel contain reference to applied patches visible with perl-V
+	# remove non-applied (debian specific) patch references lines and DEBPKG word
+	cd $(DIR_APP) && sed -i -e '/:debian/d' -e 's/DEBPKG://' patchlevel.h
+
+	# Use our own TIMESTAMP instead of __DATE__ and __TIME__ so everyone has same md5
+	cd $(DIR_APP) && sed -i -r 's|(.*)Compiled at ".*__DATE__.*__TIME__(.*)|\1Compiled at " $(TIMESTAMP)\2|' perl.c
+
+ifeq "$(STAGE)" "toolchain"
+	cd $(DIR_APP) && patch -Np1 -i $(DIR_PATCHES)/$(PATCH1)
+	# fix an incompatibility with gcc-4.2.3:
+	cd $(DIR_APP) && mv -v makedepend.SH makedepend.SH.orig; sed 's/command /command[ -]/' makedepend.SH.orig > makedepend.SH
+	# static_ext and Errno are needed to run coreutils test suite
+	cd $(DIR_APP) && ./configure.gnu	--prefix=/$(TOOLS_DIR) \
+						-Dstatic_ext='Data/Dumper IO Fcntl POSIX' \
+						-Dmyhostname=localhost
+	cd $(DIR_APP) && make perl utilities  ext/Errno/pm_to_blib
+	cd $(DIR_APP) && cp -v perl pod/pod2man /$(TOOLS_DIR)/bin
+	cd $(DIR_APP) && mkdir -pv /$(TOOLS_DIR)/lib/perl5/$(VER)
+	cd $(DIR_APP) && cp -Rv lib/* /$(TOOLS_DIR)/lib/perl5/$(VER)
+endif
+
+ifeq "$(STAGE)" "base"
+	# build the right list of installed files even if we cheat for stage2 symlinks to toolchain
+	sed -i -e '/\.\/usr\/bin\/perl$$/d' /usr/src/lsalr
+	# fix an incompatibility with gcc-4.2.3:
+	cd $(DIR_APP) && sed -i 's/command /command[ -]/' makedepend.SH
+	# Use Zlib library from system, not Perl internal (sed modification from LFS)
+	cd $(DIR_APP) && sed -i -e "s|BUILD_ZLIB\s*= True|BUILD_ZLIB = False|" \
+				-e "s|INCLUDE\s*= ./zlib-src|INCLUDE    = /usr/include|" \
+				-e "s|LIB\s*= ./zlib-src|LIB        = /lib|" \
+			ext/Compress-Raw-Zlib/config.in
+	cd $(DIR_APP) && ./configure.gnu	--prefix=/usr \
+						-Dman1dir=/usr/share/man/man1 \
+						-Dman3dir=/usr/share/man/man3 \
+						-Dpager="/usr/bin/less -isR" \
+						-Ui_db \
+						-Ui_gdbm \
+						-Ui_ndbm \
+						-Ui_dbm \
+						-Dmyhostname=localhost \
+						-Uoptimize \
+						-Duseshrplib \
+						-Darchname=$(MACHINE)-linux
+	cd $(DIR_APP) && make
+	cd $(DIR_APP) && make install
+
+ifeq "$(RUNNING_TEST)" "yes"
+	# needed to pass lib/Net/t/hostname test
+	sed -i "s/localhost/localhost $$(hostname)/" /etc/hosts
+	# op/rand.t may fail 0.1 % of the time : sorry, restart
+	cd $(DIR_APP) && make -j 1 test &> $(DIR_TEST)/$(THISAPP)-$(STAGE_ORDER).log
+	sed -i "s/localhost.*/localhost/" /etc/hosts # no more needed after the tests
+endif
+endif
+
+	@rm -rf $(DIR_APP)
+	@$(POSTBUILD)

@@ -1,0 +1,106 @@
+--- oinkmaster-2.0/oinkmaster.pl.old	2007-04-16 13:15:51.000000000 +0000
++++ oinkmaster-2.0/oinkmaster.pl	2007-06-08 17:10:39.000000000 +0000
+@@ -1062,101 +1062,10 @@
+     my $dir = dirname($archive);
+     chdir("$dir") or clean_exit("$url: could not change directory to \"$dir\": $!");
+ 
+-    if ($config{use_external_bins}) {
+-
+-      # Run integrity check on the gzip file.
+-        clean_exit("$url: integrity check on gzip file failed (file transfer failed or ".
+-                   "file in URL not in gzip format?).")
+-          if (system("gzip", "-t", "$archive"));
+-
+-      # Decompress it.
+-        system("gzip", "-d", "$archive")
+-          and clean_exit("$url: unable to uncompress $archive.");
+-
+-      # Suffix has now changed from .tar.gz|.tgz to .tar.
+-        $archive =~ s/\.gz$//;
+-
+-      # Make sure the .tar file now exists.
+-      # (Gzip may not return an error if it was not a gzipped file...)
+-        clean_exit("$url: failed to unpack gzip file (file transfer failed or ".
+-                   "file in URL not in tar'ed gzip format?).")
+-          unless (-e  "$archive");
+-
+-        my $stdout_file = "$tmpdir/tar_content.out";
+-
+-        open(OLDOUT, ">&STDOUT")      or clean_exit("could not dup STDOUT: $!");
+-        open(STDOUT, ">$stdout_file") or clean_exit("could not redirect STDOUT: $!");
+-
+-        my $ret = system("tar", "tf", "$archive");
+-
+-        close(STDOUT);
+-        open(STDOUT, ">&OLDOUT") or clean_exit("could not dup STDOUT: $!");
+-        close(OLDOUT);
+-
+-        clean_exit("$url: could not list files in tar archive (is it broken?)")
+-          if ($ret);
+-
+-        open(TAR, "$stdout_file") or clean_exit("failed to open $stdout_file: $!");
+-        @tar_content = <TAR>;
+-        close(TAR);
+-
+- # use_external_bins=0
+-    } else {
+-        $tar = Archive::Tar->new($archive, 1);
+-        clean_exit("$url: failed to read $archive (file transfer failed or ".
+-                   "file in URL not in tar'ed gzip format?).")
+-          unless (defined($tar));
+-        @tar_content = $tar->list_files();
+-    }
+-
+-  # Make sure we could grab some content from the tarball.
+-    clean_exit("$url: could not list files in tar archive (is it broken?)")
+-      if ($#tar_content < 0);
+-
+-  # For each filename in the archive, do some basic sanity checks.
+-    foreach my $filename (@tar_content) {
+-       chomp($filename);
+-
+-      # We don't want absolute filename.
+-        clean_exit("$url: rules archive contains absolute filename. ".
+-                   "Offending file/line:\n$filename")
+-          if ($filename =~ /^\//);
+-
+-      # We don't want to have any weird characters anywhere in the filename.
+-        clean_exit("$url: illegal character in filename in tar archive. Allowed are ".
+-                   "$OK_PATH_CHARS\nOffending file/line:\n$filename")
+-          if ($config{use_path_checks} && $filename =~ /[^$OK_PATH_CHARS]/);
+-
+-      # We don't want to unpack any "../../" junk (check is useless now though).
+-        clean_exit("$url: filename in tar archive contains \"..\".\n".
+-                   "Offending file/line:\n$filename")
+-          if ($filename =~ /\.\./);
+-    }
+-
+- # Looks good. Now we can untar it.
+-    print STDERR "Archive successfully downloaded, unpacking... "
+-      unless ($config{quiet});
+-
++# start of IPCop change to use less disk space and unneed as we use md5
+     if ($config{use_external_bins}) {
+         clean_exit("failed to untar $archive.")
+-          if system("tar", "xf", "$archive");
+-    } else {
+-        mkdir("$rules_dir") or clean_exit("could not create \"$rules_dir\" directory: $!\n");
+-        foreach my $file ($tar->list_files) {
+-            next unless ($file =~ /^$rules_dir\/[^\/]+$/);  # only ^rules/<file>$
+-
+-            my $content = $tar->get_content($file);
+-
+-          # Symlinks in the archive will make get_content return undef.
+-            clean_exit("could not get content from file \"$file\" in downloaded archive, ".
+-                       "make sure it is a regular file\n")
+-              unless (defined($content));
+-
+-            open(RULEFILE, ">", "$file")
+-              or clean_exit("could not open \"$file\" for writing: $!\n");
+-            print RULEFILE $content;
+-            close(RULEFILE);
+-        }
++          if system("/bin/tar xzf $archive --exclude='doc' --exclude='so_rules'");
+     }
+ 
+   # Make sure that non-empty rules directory existed in archive.

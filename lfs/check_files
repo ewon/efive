@@ -1,0 +1,93 @@
+###############################################################################
+# This file is part of the IPCop Firewall.                                    #
+#                                                                             #
+# IPCop is free software; you can redistribute it and/or modify               #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation; either version 2 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# IPCop is distributed in the hope that it will be useful,                    #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with IPCop; if not, write to the Free Software                        #
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA    #
+#                                                                             #
+# Makefiles are based on LFSMake, which is                                    #
+# Copyright (C) 2002 Rod Roard <rod@sunsetsystems.com>                        #
+#                                                                             #
+# Modifications by:                                                           #
+# ??-12-2003 Mark Wormgoor < mark@wormgoor.com>                               #
+#          - Modified Makefile for IPCop build                                #
+#                                                                             #
+# $Id: check_files 5857 2011-09-17 09:03:49Z gespinasse $
+#                                                                             #
+###############################################################################
+
+###############################################################################
+# Definitions
+###############################################################################
+
+PKG_NAME   = check_files
+HOST_ARCH  = all
+
+THISAPP    = $(PKG_NAME)
+
+ALLFILES  := ${NAME}-${VERSION}-all-files-list.${MACHINE}.txt
+
+# where we find ELF exec code to check
+EXEC_PATH  := /{bin,sbin} /lib/{,iptables,udev} /usr/{bin,lib,libexec,local,sbin} /etc/Conexant
+
+###############################################################################
+# Top-level Rules
+###############################################################################
+
+
+check :
+
+download :
+
+md5 :
+
+# 'install' target is used because we prefer to re-use chroot_make and so have no choice
+###############################################################################
+# Installation Details
+###############################################################################
+# Produce the md5 of installed files
+install :
+
+	echo "Generating md5 for each file include in $(NAME)" >> $(LOGFILE)
+	-mv -f /usr/src/doc/${ALLFILES}.md5 /usr/src/doc/${ALLFILES}.md5.bak
+	# remove dev/console (and dev/null) from the list or md5sum hang
+	# skip directories to avoid error message and don't care of symlink
+	for myfile in `cat /usr/src/doc/${ALLFILES} | sed 's|^dev.*||'`; do \
+		if [ -f /$${myfile} ]; then \
+			md5sum /$$myfile >> /usr/src/doc/${ALLFILES}.md5; \
+		fi; \
+	done
+
+	# TEXTEREL
+	cd / && find ${EXEC_PATH} -type f -exec scanelf -qt {} \; > /usr/src/log_${MACHINE}/$(PKG_NAME)-textrel.log
+
+	# RPATH (I consider log good enought to my understanding)
+	cd / && find ${EXEC_PATH} -type f -exec scanelf -qr {} \; > /usr/src/log_${MACHINE}/$(PKG_NAME)-rpath.log
+
+	# executable stack	http://www.gentoo.org/proj/en/hardened/gnu-stack.xml
+	cd / && find ${EXEC_PATH} -type f -exec scanelf -qe {} \; > /usr/src/log_${MACHINE}/$(PKG_NAME)-executable-stack.log
+
+	# TODO
+	# check not-pie code
+	# check already stripped code (that drive to lib reduction failure for initramfs with mklibs)
+	# check for old hash (not using our LDFLAG), probably just matter for size if we have both
+
+	# find warnings and count them
+	-cd /usr/src/log_${MACHINE} && grep ': WARNING:' 0[1-4]*/* >/usr/src/log_${MACHINE}/$(PKG_NAME)-configure_warnings.log
+	-cd /usr/src/log_${MACHINE} && grep ': warning:' 0[1-4]*/* >/usr/src/log_${MACHINE}/$(PKG_NAME)-compilation_warnings_all.log
+	-cd /usr/src/log_${MACHINE} && \
+		for f in $$(ls 0[1-4]*/*); do \
+			[ -f $$f ] && echo -ne "$$f :\t";grep ': warning:' $$f | wc -l; \
+		done >/usr/src/log_${MACHINE}/$(PKG_NAME)-compilation-warnings_per_package_count.log
+	# remove lucky 0 warnings from the list
+	-sed -i '/\t0$$/d' /usr/src/log_${MACHINE}/$(PKG_NAME)-compilation-warnings_per_package_count.log

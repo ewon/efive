@@ -1,0 +1,6 @@
+## slang-1.4.5-mini
+##
+#usr/include/slang
+#usr/include/slang/slang.h
+#usr/include/slang/slcurses.h
+#usr/lib/libslang.a

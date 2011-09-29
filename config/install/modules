@@ -1,0 +1,4 @@
+ehci-hcd
+ohci-hcd
+uhci-hcd
+usbhid

@@ -1,0 +1,34 @@
+--- vnstat-1.10/Makefile.orig	2010-08-13 10:24:18.000000000 +0200
++++ vnstat-1.10/Makefile	2010-08-13 10:26:51.000000000 +0200
+@@ -2,11 +2,13 @@
+ BIN = $(DESTDIR)/usr/bin
+ SBIN = $(DESTDIR)/usr/sbin
+ MAN = $(DESTDIR)/usr/share/man
++DB := $(DESTDIR)/var/lib/vnstat
+ 
+ # bin and man dirs for *BSD
+ BIN_BSD = $(DESTDIR)/usr/local/bin
+ SBIN_BSD = $(DESTDIR)/usr/local/sbin
+ MAN_BSD = $(DESTDIR)/usr/local/man
++DB_BSD := $(DESTDIR)/var/db/vnstat
+ 
+ default: vnstat
+ 
+@@ -53,7 +55,7 @@
+ 	fi
+ 
+ # install everything else
+-	install -d -m 755 $(BIN) $(SBIN) $(MAN)/man1 $(MAN)/man5 $(DESTDIR)/var/lib/vnstat
++	install -d -m 755 $(BIN) $(SBIN) $(MAN)/man1 $(MAN)/man5 $(DB)
+ 	install -s -m 755 src/vnstat $(BIN)
+ 	install -s -m 755 src/vnstatd $(SBIN)
+ 	@if [ -f "src/vnstati" ]; \
+@@ -126,7 +128,7 @@
+ 	fi
+ 
+ # install binaries
+-	install -d -m 755 $(DESTDIR)/var/db/vnstat
++	install -d -m 755 $(DB_BSD)
+ 	install -s -m 755 src/vnstat $(BIN_BSD)
+ 	install -s -m 755 src/vnstatd $(SBIN_BSD)
+ 

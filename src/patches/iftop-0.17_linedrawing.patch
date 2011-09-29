@@ -1,0 +1,12 @@
+--- iftop-0.17.orig/iftop.c	2009-10-05 20:36:29.000000000 +0000
++++ iftop-0.17/iftop.c	2009-10-05 20:39:35.000000000 +0000
+@@ -572,6 +572,9 @@
+     read_config(options.config_file, options.config_file_specified);
+     options_make();
+     
++    /* Hack to get ASCII linedrawing on some (misbehaving) terminals */     
++    system("tput rs1");
++    
+     sa.sa_handler = finish;
+     sigaction(SIGINT, &sa, NULL);
+ 

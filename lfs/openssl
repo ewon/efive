@@ -1,0 +1,121 @@
+###############################################################################
+# This file is part of the IPCop Firewall.                                    #
+#                                                                             #
+# IPCop is free software; you can redistribute it and/or modify               #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation; either version 2 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# IPCop is distributed in the hope that it will be useful,                    #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with IPCop; if not, write to the Free Software                        #
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA    #
+#                                                                             #
+# Makefiles are based on LFSMake, which is                                    #
+# Copyright (C) 2002 Rod Roard <rod@sunsetsystems.com>                        #
+#                                                                             #
+# Modifications by:                                                           #
+# ??-12-2003 Mark Wormgoor < mark@wormgoor.com>                               #
+#          - Modified Makefile for IPCop build                                #
+#                                                                             #
+# $Id: openssl 5420 2011-02-09 06:57:40Z owes $
+#                                                                             #
+###############################################################################
+
+###############################################################################
+# Definitions
+###############################################################################
+
+include Config
+
+PKG_NAME   = openssl
+VER        = 0.9.8r
+HOST_ARCH  = all
+OTHER_SRC  = yes
+
+THISAPP    = $(PKG_NAME)-$(VER)
+DL_FILE    = $(THISAPP).tar.gz
+DL_FROM    = http://www.openssl.org/source
+DIR_APP    = $(DIR_SRC)/$(THISAPP)
+TARGET     = $(DIR_INFO)/$(STAGE_ORDER)_$(STAGE)/$(THISAPP)
+
+# does not work if passed to ./config
+# fix exec stack with special CFLAGS
+CFLAGS    += -Wa,--noexecstack
+
+###############################################################################
+# Top-level Rules
+###############################################################################
+
+objects		= $(DL_FILE)
+
+$(DL_FILE)	= $(DL_FROM)/$(DL_FILE)
+
+$(DL_FILE)_MD5	= 0352932ea863bc02b056cda7c9ac5b79
+
+install : $(TARGET)
+
+check : $(patsubst %,$(DIR_CHK)/%,$(objects))
+
+download :$(patsubst %,$(DIR_DL)/%,$(objects))
+
+md5 : $(subst %,%_MD5,$(objects))
+
+###############################################################################
+# Downloading, checking, md5sum
+###############################################################################
+
+$(patsubst %,$(DIR_CHK)/%,$(objects)) :
+	@$(CHECK)
+
+$(patsubst %,$(DIR_DL)/%,$(objects)) :
+	@$(LOAD)
+
+$(subst %,%_MD5,$(objects)) :
+	@$(MD5)
+
+###############################################################################
+# Installation Details
+###############################################################################
+
+$(TARGET) : $(firstword $(MAKEFILE_LIST)) $(patsubst %,$(DIR_DL)/%,$(objects))
+	@$(PREBUILD)
+	@rm -rf $(DIR_APP) && cd $(DIR_SRC) && tar zxf $(DIR_DL)/$(DL_FILE)
+	# fix LDFLAGS usage
+	cd $(DIR_APP) && patch -Np1 -i $(DIR_PATCHES)/$(PKG_NAME)-0.9.8h_ldflags.patch
+
+	# fix available on gentoo in case we upgrade binutils >2.20.1
+
+	cd $(DIR_APP) && sed -i -e 's/-O3/$(CFLAGS)/' -e 's/-mcpu=pentium//' Configure
+
+	# suppress DATE compilation timestamp, it will be replaced by "date not available"
+	# as you could see with openssl version -b
+	cd $(DIR_APP) && sed -i -e '/define DATE/d' crypto/Makefile
+
+	cd $(DIR_APP) && chmod 755 Configure
+	cd $(DIR_APP) && ./config --openssldir=/etc/ssl --prefix=/usr \
+		no-idea no-threads no-mdc2 no-rc5 no-ec zlib-dynamic shared
+	# make depend is needed because we select to compile with less protocols
+	cd $(DIR_APP) && make depend
+	cd $(DIR_APP) && make
+
+ifeq "$(RUNNING_TEST)" "yes"
+	cd $(DIR_APP) && make -j 1 test &> $(DIR_TEST)/$(THISAPP)-$(STAGE_ORDER).log
+	# should have 24 error, 2 because there is no .pem cert and 22 'proved invalid' cases
+	cd $(DIR_APP) && awk '/:error:/{total+=1} ; END {print "Total failed tests="total}' \
+				$(DIR_TEST)/$(THISAPP)-$(STAGE_ORDER).log \
+				>>$(DIR_TEST)/$(THISAPP)-$(STAGE_ORDER).log
+endif
+
+	cd $(DIR_APP) && make install_sw
+	rm -rf /etc/ssl/lib
+	rm /usr/lib/{libcrypto,libssl}.a
+	install -m 0644 $(DIR_SRC)/config/ssl/openssl.cnf /etc/ssl
+	install -m 0644 $(DIR_SRC)/config/ssl/openvpn.cnf /etc/ssl
+
+	@rm -rf $(DIR_APP)
+	@$(POSTBUILD)

@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+# This script is needed to upgrade apache from web interface
+# without giving a blank page
+# HUP and USR1 signals does not restart a new version
+#
+# $Id: restarthttpd 4484 2010-04-17 14:11:20Z owes $
+#
+
+
+
+case "$1" in
+--restart|restart)
+    # first wait some time for the web page to refresh, then stop and start
+    if [ -f /var/run/httpd.pid ]; then
+        /bin/sleep 10
+        /usr/bin/killall -KILL httpd
+    fi
+    /usr/sbin/httpd
+    ;;
+*)
+    if [ -f /var/run/httpd.pid ]; then
+        # HUP running httpd, start it if HUP fails
+        /bin/kill -HUP `cat /var/run/httpd.pid`
+        [ $? == 0 ] || /usr/sbin/httpd
+    else
+        /usr/sbin/httpd
+    fi
+    ;;
+esac
+
+exit 0

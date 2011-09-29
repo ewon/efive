@@ -1,0 +1,112 @@
+###############################################################################
+# This file is part of the IPCop Firewall.                                    #
+#                                                                             #
+# IPCop is free software; you can redistribute it and/or modify               #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation; either version 2 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# IPCop is distributed in the hope that it will be useful,                    #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with IPCop; if not, write to the Free Software                        #
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA    #
+#                                                                             #
+# Makefiles are based on LFSMake, which is                                    #
+# Copyright (C) 2002 Rod Roard <rod@sunsetsystems.com>                        #
+#                                                                             #
+# Modifications by:                                                           #
+# ??-12-2003 Mark Wormgoor < mark@wormgoor.com>                               #
+#          - Modified Makefile for IPCop build                                #
+#                                                                             #
+# $Id: ulogd 4946 2010-09-12 15:39:58Z owes $
+#                                                                             #
+###############################################################################
+
+###############################################################################
+# Definitions
+###############################################################################
+
+include Config
+
+PKG_NAME   = ulogd
+VER        = 1.24
+HOST_ARCH  = all
+OTHER_SRC  = yes
+
+THISAPP    = $(PKG_NAME)-$(VER)
+DL_FILE    = $(THISAPP).tar.bz2
+DL_FROM    = http://ftp.netfilter.org/pub/ulogd
+DIR_APP    = $(DIR_SRC)/$(THISAPP)
+TARGET     = $(DIR_INFO)/$(STAGE_ORDER)_$(STAGE)/$(THISAPP)
+
+###############################################################################
+# Top-level Rules
+###############################################################################
+
+objects = $(DL_FILE)
+
+$(DL_FILE) = $(DL_FROM)/$(DL_FILE)
+
+#$(DL_FILE)_MD5 = e8809da54b49013e2b03b5c47ce47dca
+$(DL_FILE)_MD5 = 05b4ed2926b9a22aaeaf642917bbf8ff
+
+install : $(TARGET)
+
+check : $(patsubst %,$(DIR_CHK)/%,$(objects))
+
+download :$(patsubst %,$(DIR_DL)/%,$(objects))
+
+md5 : $(subst %,%_MD5,$(objects))
+
+###############################################################################
+# Downloading, checking, md5sum
+###############################################################################
+
+$(patsubst %,$(DIR_CHK)/%,$(objects)) :
+	@$(CHECK)
+
+$(patsubst %,$(DIR_DL)/%,$(objects)) :
+	@$(LOAD)
+
+$(subst %,%_MD5,$(objects)) :
+	@$(MD5)
+
+###############################################################################
+# Installation Details
+###############################################################################
+
+$(TARGET) : $(firstword $(MAKEFILE_LIST)) $(patsubst %,$(DIR_DL)/%,$(objects))
+	@$(PREBUILD)
+	@rm -rf $(DIR_APP) && cd $(DIR_SRC) && tar jxf $(DIR_DL)/$(DL_FILE)
+	# remove database(s) in case of a partial build
+	rm -f /var/ipcop/traffic/empty-ulogd.db
+	rm -f /var/log/traffic/ulogd.db
+
+	cd $(DIR_APP) && ./configure --prefix=/usr \
+													--sysconfdir=/etc \
+													--disable-static \
+													--without-mysql \
+													--without-pcap \
+													--without-pgsql \
+													--with-sqlite3-log-ip-as-string \
+													--with-sqlite3=/usr
+	cd $(DIR_APP) && make
+	cd $(DIR_APP) && make install
+
+	cp $(DIR_SRC)/config/ulogd/ulogd.conf /etc/
+
+	# database in /var/log/traffic
+	mkdir -p /var/log/traffic/
+	sed -i -e 's+DATABASEDIR+/var/log/traffic+' /etc/ulogd.conf
+	sed -i -e 's+LIBDIR+/usr/lib/ulogd+' /etc/ulogd.conf
+	# Create database, since we currently cannot create a fresh new DB in target system
+	# we create empty-ulogd.db additionally so we can flush the DB and start from scratch.
+	sqlite3 /var/ipcop/traffic/empty-ulogd.db < $(DIR_SRC)/config/ulogd/sqlite3.table
+	cp /var/ipcop/traffic/empty-ulogd.db /var/log/traffic/ulogd.db
+
+	@rm -rf $(DIR_APP)
+	@$(POSTBUILD)

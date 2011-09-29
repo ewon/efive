@@ -1,0 +1,257 @@
+###############################################################################
+# This file is part of the IPCop Firewall.                                    #
+#                                                                             #
+# IPCop is free software; you can redistribute it and/or modify               #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation; either version 2 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# IPCop is distributed in the hope that it will be useful,                    #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with IPCop; if not, write to the Free Software                        #
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA    #
+#                                                                             #
+# Makefiles are based on LFSMake, which is                                    #
+# Copyright (C) 2002 Rod Roard <rod@sunsetsystems.com>                        #
+#                                                                             #
+# Modifications by:                                                           #
+# ??-12-2003 Mark Wormgoor < mark@wormgoor.com>                               #
+#          - Modified Makefile for IPCop build                                #
+#                                                                             #
+# $Id: glibc 5412 2011-02-08 21:18:58Z gespinasse $
+#                                                                             #
+###############################################################################
+
+###############################################################################
+# Definitions
+###############################################################################
+
+include Config
+
+PKG_NAME   = glibc
+VER        = 2.11.3
+HOST_ARCH  = all
+OTHER_SRC  = yes
+
+THISAPP    = $(PKG_NAME)-$(VER)
+DL_FILE    = $(THISAPP).tar.xz
+DL_FROM    = $(URL_GNU)/$(PKG_NAME)
+DIR_APP    = $(DIR_SRC)/$(THISAPP)
+
+# Do not use hardening options to avoid breaking the build
+# we pass CFLAGS with configparms
+CFLAGS     = 
+CXXFLAGS   = 
+LDFLAGS    =
+
+TARGET     = $(DIR_INFO)/$(STAGE_ORDER)_$(STAGE)/$(THISAPP)
+
+
+###############################################################################
+# Top-level Rules
+###############################################################################
+
+objects = $(DL_FILE)
+
+$(DL_FILE)				= $(DL_FROM)/$(DL_FILE)
+
+$(DL_FILE)_MD5				= 2072b7cc9c6bbe88e16622e274026df6
+
+install : $(TARGET)
+
+check : $(patsubst %,$(DIR_CHK)/%,$(objects))
+
+download :$(patsubst %,$(DIR_DL)/%,$(objects))
+
+md5 : $(subst %,%_MD5,$(objects))
+
+###############################################################################
+# Downloading, checking, md5sum
+###############################################################################
+
+$(patsubst %,$(DIR_CHK)/%,$(objects)) :
+	@$(CHECK)
+
+$(patsubst %,$(DIR_DL)/%,$(objects)) :
+	@$(LOAD)
+
+$(subst %,%_MD5,$(objects)) :
+	@$(MD5)
+
+###############################################################################
+# Installation Details
+###############################################################################
+
+# Use same settings for toolchain and base for simplicity
+# config.cache is the easiest way for arch dependent settings
+ifeq "$(MACHINE)" "alpha"
+  GCCOPTION	=
+  CFLAGS = -O3 -march=ev4 -mtune=ev56 -mieee -pipe
+endif
+ifeq "$(MACHINE)" "i486"
+  GCCOPTION	= -m32
+  CFLAGS = -march=i486 -mtune=pentium -Os -pipe -mno-tls-direct-seg-refs
+endif
+ifeq "$(MACHINE)" "ppc"
+  GCCOPTION	= -m32
+  CFLAGS = -O3 -pipe
+endif
+ifeq "$(MACHINE)" "sparc"
+  GCCOPTION	= -m32
+  CFLAGS = -mcpu=ultrasparc -O3 -pipe
+endif
+
+$(TARGET) : $(patsubst %,$(DIR_DL)/%,$(objects))
+	@$(PREBUILD)
+	@rm -rf $(DIR_APP) $(DIR_SRC)/glibc-build
+	@cd $(DIR_SRC) && xz -dc $(DIR_DL)/$(DL_FILE) | tar xf -
+	cd $(DIR_APP) && patch -Np1 -i $(DIR_PATCHES)/glibc-2.11.1_notimestamp.patch
+	cd $(DIR_APP) && patch -Np1 -i $(DIR_PATCHES)/glibc-2.11_sparc-localedef-mmap.patch
+
+	@mkdir $(DIR_SRC)/glibc-build
+
+	# HLFS borrowed, smaller code
+	cd $(DIR_APP) && sed -i 's|hash-style=both|hash-style=gnu|' Makeconfig
+
+ifeq "$(STAGE)" "toolchain"
+	# force no nls with ac_cv_prog_MSGFMT="" (and spare 2 MB)
+	# ranlib check is not reliable and fail when it is run after the same
+	# second as the created archive.
+	# Silent that noise on log with libc_cv_ranlib_necessary=no
+	cd $(DIR_SRC)/glibc-build &&				\
+		CFLAGS="$(CFLAGS)"				\
+		CC="$(LFS_TGT)-gcc $(GCCOPTION)"		\
+		CXX="$(LFS_TGT)-g++ $(GCCOPTION)"		\
+		../$(THISAPP)/configure				\
+			--prefix=/$(TOOLS_DIR)			\
+			--host=$(LFS_TGT)			\
+			--build=$(TARGET_2)			\
+			--disable-profile			\
+			--enable-add-ons			\
+			--enable-bind-now			\
+			--enable-kernel=$(REQUIRED_KERNEL)	\
+			--enable-stackguard-randomization	\
+			--enable-omitfp				\
+			--with-headers=/$(TOOLS_DIR)/include	\
+			libc_cv_forced_unwind=yes		\
+			libc_cv_c_cleanup=yes			\
+			libc_cv_pic_default=yes			\
+			ac_cv_prog_MSGFMT=""			\
+			libc_cv_ranlib_necessary=no
+
+	cd $(DIR_SRC)/glibc-build && make PARALLELMFLAGS=-j$(PARALLELISM)
+	mkdir -p /$(TOOLS_DIR)/etc
+	touch /$(TOOLS_DIR)/etc/ld.so.conf
+	cd $(DIR_SRC)/glibc-build && make install
+	# our cross-compiled glibc will not support some tests, so do not test there
+	# see http://lists.diy-linux.org/pipermail/diy-linux-dev/2005-June/000556.html
+	# Configuring timezone between stage2 and last glibc build
+	cp --remove-destination $(DIR_DL)/localtime /$(TOOLS_DIR)/etc/localtime
+endif
+
+ifeq "$(STAGE)" "base"
+	cd $(DIR_APP) && sed -i "s|libs -o|libs -L/usr/lib -Wl,-dynamic-linker=$(LINKER) -o|" \
+			scripts/test-installation.pl
+	# We don't install any other shells than bash, but just in case, force ldd to use bash
+	cd $(DIR_APP) && sed -i 's|@BASH@|/bin/bash|' elf/ldd.bash.in
+	cd $(DIR_SRC)/glibc-build &&				\
+		CFLAGS="$(CFLAGS)"				\
+		../$(THISAPP)/configure				\
+			--prefix=/usr				\
+			--host=$(TARGET_2)			\
+			--build=$(TARGET_2)			\
+			--disable-profile			\
+			--enable-add-ons			\
+			--enable-bind-now			\
+			--enable-kernel=$(REQUIRED_KERNEL)	\
+			--enable-stackguard-randomization	\
+			--enable-omitfp				\
+			--libexecdir=/usr/lib/glibc		\
+			libc_cv_pic_default=yes			\
+			libc_cv_ranlib_necessary=no
+
+	echo "#1st run to build libs with -fPIC only" > $(DIR_SRC)/glibc-build/configparms
+	echo "build-programs=no" >> $(DIR_SRC)/glibc-build/configparms
+	#echo "CC += -fPIC -fno-stack-protector -U_FORTIFY_SOURCE -nonow -nopie" >> $(DIR_SRC)/glibc-build/configparms
+	#echo "CCX += -fPIC -fno-stack-protector -U_FORTIFY_SOURCE -nonow -nopie" >> $(DIR_SRC)/glibc-build/configparms
+	echo "CC += -fPIC -fno-stack-protector -U_FORTIFY_SOURCE" >> $(DIR_SRC)/glibc-build/configparms
+	echo "CCX += -fPIC -fno-stack-protector -U_FORTIFY_SOURCE" >> $(DIR_SRC)/glibc-build/configparms
+	cd $(DIR_SRC)/glibc-build && make PARALLELMFLAGS=-j$(PARALLELISM)
+
+	echo "#2nd run to build hardened programs" > $(DIR_SRC)/glibc-build/configparms
+	echo "CC += -fPIE -fstack-protector-all -D_FORTIFY_SOURCE=2" >> $(DIR_SRC)/glibc-build/configparms
+	echo "CCX += -fPIE -fstack-protector-all -D_FORTIFY_SOURCE=2" >> $(DIR_SRC)/glibc-build/configparms
+	cd $(DIR_SRC)/glibc-build && make PARALLELMFLAGS=-j$(PARALLELISM)
+	# LFS borrowed, copy a file from the source tree into build tree to prevent a couple of test failures
+	cd $(DIR_SRC)/glibc-build && cp -v ../$(THISAPP)/iconvdata/gconv-modules iconvdata
+
+ifeq "$(RUNNING_TEST)" "yes"
+	echo "#tests run" > $(DIR_SRC)/glibc-build/configparms
+	echo "CC += -fPIC -fno-stack-protector -U_FORTIFY_SOURCE" >> $(DIR_SRC)/glibc-build/configparms
+	echo "CCX += -fPIC -fno-stack-protector -U_FORTIFY_SOURCE" >> $(DIR_SRC)/glibc-build/configparms
+	-cd $(DIR_SRC)/glibc-build; TIMEOUTFACTOR=16 make -j 1 -k check &> $(DIR_TEST)/$(THISAPP)-$(STAGE_ORDER).log
+endif
+	touch /etc/ld.so.conf
+	cd $(DIR_SRC)/glibc-build && make install
+
+	# Creating the locales
+	mkdir -p /usr/lib/locale
+	#cd $(DIR_SRC)/glibc-build && localedef -i en_US -f UTF-8 en_US.utf8
+	#cd $(DIR_SRC)/glibc-build && localedef -i en_US -f ISO-8859-1 en_US
+	#cd $(DIR_SRC)/glibc-build && localedef -i en_GB -f UTF-8 en_GB.utf8
+	#cd $(DIR_SRC)/glibc-build && localedef -i en_GB -f ISO-8859-1 en_GB
+	# Add de_DE locale to be able to pass libtool test (#37 localized compiler messages)
+	#cd $(DIR_SRC)/glibc-build && localedef -i de_DE -f UTF-8 de_DE.UTF-8
+	#cd $(DIR_SRC)/glibc-build && localedef -i de_DE -f ISO-8859-1 de_DE
+	localedef -i cs_CZ -f UTF-8 cs_CZ.UTF-8
+	localedef -i de_DE -f ISO-8859-1 de_DE		# required by libtool test (#37 localized compiler messages)
+	localedef -i de_DE@euro -f ISO-8859-15 de_DE@euro
+	localedef -i de_DE -f UTF-8 de_DE.UTF-8
+	localedef -i en_HK -f ISO-8859-1 en_HK
+	localedef -i en_PH -f ISO-8859-1 en_PH
+	localedef -i en_US -f ISO-8859-1 en_US
+	localedef -i en_US -f UTF-8 en_US.UTF-8		# required by grep test (char-class-multibyte)
+	localedef -i es_MX -f ISO-8859-1 es_MX
+	localedef -i fa_IR -f UTF-8 fa_IR
+	localedef -i fr_FR -f ISO-8859-1 fr_FR
+	localedef -i fr_FR@euro -f ISO-8859-15 fr_FR@euro
+	localedef -i fr_FR -f UTF-8 fr_FR.UTF-8
+	localedef -i it_IT -f ISO-8859-1 it_IT
+	localedef -i ja_JP -f EUC-JP ja_JP
+	localedef -i tr_TR -f UTF-8 tr_TR.UTF-8
+	localedef -i zh_CN -f GB18030 zh_CN.GB18030
+
+	# Configuring timezone
+	cp --remove-destination $(DIR_DL)/localtime /etc/localtime
+	# tzdata will install up-to-date files (posix only to make the list smaller)
+	# so remove every timezone include in glibc
+	rm -rf /usr/share/zoneinfo/*
+
+	# Every shared lib include in full initramfs (pulled by mklibs)
+	# need a _pic.a file( and _pic.map if available) to be efficiently reduced by mklibs
+	# Without .pic.a file, a shared lib is only copied and stripped
+	# specific to libc, soinit.o and sofini.o need to be added
+	# Other _pic.map and _pic.a could be added directly to /lib /usr/lib
+	cd $(DIR_SRC)/glibc-build && install -dv				/usr/lib/libc_pic
+	cd $(DIR_SRC)/glibc-build && install --mode=0644 libc_pic.a		/usr/lib/libc_pic
+	cd $(DIR_SRC)/glibc-build && install --mode=0644 libc.map		/usr/lib/libc_pic/libc_pic.map
+	cd $(DIR_SRC)/glibc-build && install --mode=0644 dlfcn/libdl_pic.a	/usr/lib/libc_pic
+	cd $(DIR_SRC)/glibc-build && install --mode=0644 libdl.map		/usr/lib/libc_pic/libdl_pic.map
+	cd $(DIR_SRC)/glibc-build && install --mode=0644 nptl/libpthread_pic.a	/usr/lib/libc_pic
+	cd $(DIR_SRC)/glibc-build && install --mode=0644 libpthread.map		/usr/lib/libc_pic/libpthread_pic.map
+	cd $(DIR_SRC)/glibc-build && install --mode=0644 rt/librt_pic.a		/usr/lib/libc_pic
+	cd $(DIR_SRC)/glibc-build && install --mode=0644 librt.map		/usr/lib/libc_pic/librt_pic.map
+	cd $(DIR_SRC)/glibc-build && install --mode=0644 rt/librt_pic.a		/usr/lib/libc_pic
+	cd $(DIR_SRC)/glibc-build && install --mode=0644 librt.map		/usr/lib/libc_pic/librt_pic.map
+	cd $(DIR_SRC)/glibc-build && install --mode=0644 elf/soinit.os		/usr/lib/libc_pic/soinit.o
+	cd $(DIR_SRC)/glibc-build && install --mode=0644 elf/sofini.os		/usr/lib/libc_pic/sofini.o
+
+endif
+
+	# Cleanup
+	@rm -rf $(DIR_APP) $(DIR_SRC)/glibc-build
+	@$(POSTBUILD)

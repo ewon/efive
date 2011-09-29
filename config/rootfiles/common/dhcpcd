@@ -1,0 +1,15 @@
+## dhcpcd-5.2.8
+##
+#usr/libexec/dhcpcd-hooks
+#usr/libexec/dhcpcd-hooks/01-test
+#usr/libexec/dhcpcd-hooks/02-dump
+#usr/libexec/dhcpcd-hooks/10-mtu
+#usr/libexec/dhcpcd-hooks/20-resolv.conf
+#usr/libexec/dhcpcd-hooks/29-lookup-hostname
+#usr/libexec/dhcpcd-hooks/30-hostname
+#usr/libexec/dhcpcd-hooks/50-ntp.conf
+#usr/libexec/dhcpcd-run-hooks
+usr/sbin/dhcpcd
+#usr/share/man/man5/dhcpcd.conf.5
+#usr/share/man/man8/dhcpcd-run-hooks.8
+#usr/share/man/man8/dhcpcd.8

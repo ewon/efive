@@ -1,0 +1,13 @@
+--- usb-modeswitch-data-20110805/Makefile.old	2011-08-05 20:11:33.000000000 +0200
++++ usb-modeswitch-data-20110805/Makefile	2011-09-13 07:30:04.000000000 +0200
+@@ -25,7 +25,9 @@
+ 	install --mode=644 -t $(PREFIX)/share/usb_modeswitch ./usb_modeswitch.d/*
+ 
+ db-install-packed:
+-	cd ./usb_modeswitch.d; tar -czf ../configPack.tar.gz *
++	# Create a compressed tar without gzip timestamp, so tar.gz is only different when the content is different
++	cd ./usb_modeswitch.d; tar -cf ../configPack.tar *
++	gzip -f9n ./configPack.tar
+ 	install --mode=644 -t $(PREFIX)/share/usb_modeswitch ./configPack.tar.gz
+ 	rm -f ./configPack.tar.gz
+ 

@@ -1,0 +1,13 @@
+<ipcop>
+    <update>
+        <version>2.0.1</version>
+        <releasedate>2010-mm-dd</releasedate>
+        <size>0</size>
+        <description>Language updates.&lt;br /&gt;
+            Upgrade acpid to 2.0.12, bind to 9.8.1, dnsmasq to 2.58,
+            ntp to 4.2.6p4, openssh to 5.9.</description>
+        <previousversion>2.0.0</previousversion>
+        <installdate>INSTALLDATE</installdate>
+        <latest />
+    </update>
+</ipcop>

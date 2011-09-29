@@ -1,0 +1,120 @@
+###############################################################################
+# This file is part of the IPCop Firewall.                                    #
+#                                                                             #
+# IPCop is free software; you can redistribute it and/or modify               #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation; either version 2 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# IPCop is distributed in the hope that it will be useful,                    #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with IPCop; if not, write to the Free Software                        #
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA    #
+#                                                                             #
+# Makefiles are based on LFSMake, which is                                    #
+# Copyright (C) 2002 Rod Roard <rod@sunsetsystems.com>                        #
+#                                                                             #
+# Modifications by:                                                           #
+# ??-12-2003 Mark Wormgoor < mark@wormgoor.com>                               #
+#          - Modified Makefile for IPCop build                                #
+#                                                                             #
+# $Id: isdn4k-utils 1305 2008-04-19 19:39:30Z chepati $
+#                                                                             #
+###############################################################################
+
+###############################################################################
+# Definitions
+###############################################################################
+
+include Config
+
+PKG_NAME   = isdn4k-utils
+VER        = v3.2p1
+HOST_ARCH  = all
+OTHER_SRC  = yes
+
+THISAPP    = isdn4k-utils.$(VER)
+DL_FILE    = $(THISAPP).tar.bz2
+DL_FROM    = ftp://ftp.isdn4linux.de/pub/isdn4linux/utils
+DIR_APP    = $(DIR_SRC)/isdn4k-utils
+TARGET     = $(DIR_INFO)/$(STAGE_ORDER)_$(STAGE)/$(THISAPP)
+
+PATCH1     = $(PKG_NAME)_ippp-filter.diff
+
+###############################################################################
+# Top-level Rules
+###############################################################################
+objects = $(DL_FILE) \
+	$(PATCH1)
+
+$(DL_FILE)			= $(DL_FROM)/$(DL_FILE)
+$(PATCH1)			= http://trash.net/~kaber/ippp-filter/$(PATCH1)
+
+$(DL_FILE)_MD5			= d347afa462e46eccfd1284aebae227b6
+$(PATCH1)_MD5			= b8ff58859b9e379d1f9842d43ce5956e
+
+install : $(TARGET)
+
+check : $(patsubst %,$(DIR_CHK)/%,$(objects))
+
+download :$(patsubst %,$(DIR_DL)/%,$(objects))
+
+md5 : $(subst %,%_MD5,$(objects))
+
+###############################################################################
+# Downloading, checking, md5sum
+###############################################################################
+
+$(patsubst %,$(DIR_CHK)/%,$(objects)) :
+	@$(CHECK)
+
+$(patsubst %,$(DIR_DL)/%,$(objects)) :
+	@$(LOAD)
+
+$(subst %,%_MD5,$(objects)) :
+	@$(MD5)
+
+###############################################################################
+# Installation Details
+###############################################################################
+
+$(TARGET) : $(firstword $(MAKEFILE_LIST)) $(patsubst %,$(DIR_DL)/%,$(objects))
+	@$(PREBUILD)
+	@rm -rf $(DIR_APP) && cd $(DIR_SRC) && tar jxf $(DIR_DL)/$(DL_FILE)
+
+	cd $(DIR_APP) && patch -Np1 -i $(DIR_DL)/$(PATCH1)
+	cd $(DIR_APP) && patch -Np1 -i $(DIR_PATCHES)/isdn4k-utils-v3.2p1-c89.patch
+	cd $(DIR_APP) && patch -Np1 -i $(DIR_PATCHES)/isdn4k-utils-v3.2p1-config.patch
+	cd $(DIR_APP) && patch -Np0 -i $(DIR_PATCHES)/isdn4k-utils-v3.2p1-gcc34.patch
+	cd $(DIR_APP) && patch -Np0 -i $(DIR_PATCHES)/isdn4k-utils-gcc4.patch
+	cd $(DIR_APP) && sed -i 's%-lt 64%-lt 16%' scripts/makedev.sh
+	cd $(DIR_APP)/capi20 && rm -f lt* aclocal.m4 
+	cd $(DIR_APP)/capi20 && aclocal
+	cd $(DIR_APP)/capi20 && libtoolize --force --automake
+	cd $(DIR_APP)/capi20 && automake --add-missing
+	cd $(DIR_APP)/capi20 && autoconf
+	cd $(DIR_APP)/capiinfo && rm -f aclocal.m4
+	cd $(DIR_APP)/capiinfo && aclocal
+	cd $(DIR_APP)/capiinfo && libtoolize --force --automake
+	cd $(DIR_APP)/capiinfo && automake --add-missing
+	cd $(DIR_APP)/capiinfo && autoconf
+	cd $(DIR_APP)/capiinit && rm -f aclocal.m4
+	cd $(DIR_APP)/capiinit && aclocal
+	cd $(DIR_APP)/capiinit && libtoolize --force --automake
+	cd $(DIR_APP)/capiinit && automake --add-missing
+	cd $(DIR_APP)/capiinit && autoconf
+	cd $(DIR_APP)/ipppd && autoconf
+	cd $(DIR_APP)/ipppd && sed -i -e 's/net\/bpf/pcap/' sys-linux.c
+	cd $(DIR_APP)/ipppd && sed -i -e 's/net\/bpf/pcap/' ipppd.h
+	cd $(DIR_APP) && make subconfig
+	cd $(DIR_APP)/ipppd && sed -i 's/^IPPP_FILTER.*$$/IPPP_FILTER := 1/' Makefile
+	cd $(DIR_APP) && patch -Np1 -i $(DIR_PATCHES)/isdn4k-utils-parallel-build.patch
+	cd $(DIR_APP) && make -j $(PARALLELISM)
+	cd $(DIR_APP) && make install
+
+	@rm -rf $(DIR_APP)
+	@$(POSTBUILD)
