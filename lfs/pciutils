@@ -39,7 +39,8 @@ OTHER_SRC  = yes
 
 THISAPP    = $(PKG_NAME)-$(VER)
 DL_FILE    = $(THISAPP).tar.bz2
-DL_FROM    = $(URL_KERNEL)/software/utils/pciutils
+#DL_FROM    = $(URL_KERNEL)/software/utils/pciutils
+DL_FROM    = http://ftp.ntu.edu.tw/ftp/software/utils/pciutils
 DIR_APP    = $(DIR_SRC)/$(THISAPP)
 TARGET     = $(DIR_INFO)/$(STAGE_ORDER)_$(STAGE)/$(THISAPP)
 

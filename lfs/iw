@@ -39,7 +39,8 @@ OTHER_SRC  = yes
 
 THISAPP    = $(PKG_NAME)-$(VER)
 DL_FILE    = $(THISAPP).tar.bz2
-DL_FROM    = http://wireless.kernel.org/download/iw
+#DL_FROM    = http://wireless.kernel.org/download/iw
+DL_FROM    = http://linuxwireless.org/download/iw
 DIR_APP    = $(DIR_SRC)/$(THISAPP)
 TARGET     = $(DIR_INFO)/$(STAGE_ORDER)_$(STAGE)/$(THISAPP)
 

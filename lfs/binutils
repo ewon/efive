@@ -39,7 +39,8 @@ OTHER_SRC  = yes
 
 THISAPP    = $(PKG_NAME)-$(VER)
 DL_FILE    = $(THISAPP).tar.bz2
-DL_FROM    = $(URL_GNU)/$(PKG_NAME)
+#DL_FROM    = $(URL_GNU)/$(PKG_NAME)
+DL_FROM    = http://pkgs.fedoraproject.org/repo/pkgs/avr-binutils/binutils-2.21.tar.bz2/c84c5acc9d266f1a7044b51c85a823f5
 DIR_APP    = $(DIR_SRC)/$(THISAPP)
 
 # nothing is include in iso and hardening flags make some tests unhappy

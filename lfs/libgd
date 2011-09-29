@@ -39,7 +39,8 @@ OTHER_SRC  = yes
 
 THISAPP    = gd-$(VER)
 DL_FILE    = $(THISAPP).tar.gz
-DL_FROM    = http://www.libgd.org/releases
+#DL_FROM    = http://www.libgd.org/releases
+DL_FROM    = http://www.chipsnbytes.net/downloads
 DIR_APP    = $(DIR_SRC)/$(THISAPP)
 TARGET     = $(DIR_INFO)/$(STAGE_ORDER)_$(STAGE)/$(THISAPP)
 
