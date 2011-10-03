@@ -37,7 +37,7 @@ use Time::Local;
 #use warnings;
 #use CGI::Carp 'fatalsToBrowser';
 
-$Header::boxcolour    = '#E0E0E0';    # used in makegraphs, use css whereever possible
+$Header::boxcolour    = '#FFFFFF';    # used in makegraphs, use css whereever possible
 $Header::boxframe     = '';           # retain frametype for closebox
 
 # Make sure these make it into translations even though some of them may not be in use.
@@ -245,7 +245,7 @@ sub openpage
         $full_title = "$settings{'HOSTNAME'}.$settings{'DOMAINNAME'} - $title";
     }
     else {
-        $full_title = "IPCop - $title";
+        $full_title = "eFive - $title";
     }
 
     $onload_menu = "onload=\"domMenu_activate('domMenu_main');\"" if ($menu == 1);
@@ -368,9 +368,9 @@ sub closepage
     print <<END
 <!-- IPCOP FOOTER -->
     <table width='100%' border='0'><tr>
-	<td width='175' align='left'><img src='/images/null.gif' width='15' height='12' alt='' /><a href='http://sourceforge.net/projects/ipcop' target='_blank'><img src='/images/sflogo.gif' width='153' height='30' alt='Get IPCop Firewall at SourceForge.net. Fast, secure and Free Open Source software downloads' /></a></td>
+	<td width='175' align='left'><img src='/images/null.gif' width='15' height='12' alt='' /><a href='http://www.ewon.biz' target='_blank'><img src='/images/elogo.png' width='153' height='30' alt='eWON: Machines can talk.' /></a></td>
 	<td align='center' valign='middle'>$status</td>
-	<td width='175' align='right' valign='bottom'><a href='http://www.ipcop.org/' target='_blank'><img src='/images/shieldedtux.png' width='113' height='82' alt='IPCop Tux' /></a><img src='/images/null.gif' width='15' height='12' alt='' /></td>
+	<td width='175' align='right' valign='bottom'><a href='http://www.ewon.biz/efive' target='_blank'><img src='/images/shieldedtux.png' width='113' height='82' alt='eFive' /></a><img src='/images/null.gif' width='15' height='12' alt='' /></td>
     </tr></table>
 </body></html>
 END
