@@ -109,10 +109,10 @@ sub reload
 
     # set admin manual URL
     if ($locale eq 'de_DE') {
-        $General::adminmanualurl = 'http://www.ipcop.org/2.0.0/de/admin/html';
+        $General::adminmanualurl = 'http://wiki.ewon.biz/en/admin/html';
     }
     else {
-        $General::adminmanualurl = 'http://www.ipcop.org/2.0.0/en/admin/html';
+        $General::adminmanualurl = 'http://wiki.ewon.biz/en/admin/html';
     }
 }
 
