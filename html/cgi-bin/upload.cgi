@@ -10,7 +10,8 @@
 #
 
 # Add entry in menu
-# MENUENTRY network 020 "upload" "firmware upload"
+# Crooks disabled
+# MENU..ENTRY network 020 "upload" "firmware upload"
 #
 # Make sure translation exists $Lang::tr{'firmware upload'}
 

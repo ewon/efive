@@ -22,7 +22,8 @@
 #
 
 # Add entry in menu
-# MENUENTRY vpn 010 "IPsec" "virtual private networking"
+# Disable IPSec Menu (Insert a .. in the MENU..ENTRY)
+# MENU..ENTRY vpn 010 "IPsec" "virtual private networking"
 
 use Net::DNS;
 use File::Copy;

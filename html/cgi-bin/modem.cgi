@@ -10,7 +10,8 @@
 #
 
 # Add entry in menu
-# MENUENTRY network 030 "modem" "modem configuration"
+# Crooks disabled
+# MENU..ENTRY network 030 "modem" "modem configuration"
 #
 # Make sure translation exists $Lang::tr{'modem'}
 

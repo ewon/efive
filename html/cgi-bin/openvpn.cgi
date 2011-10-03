@@ -12,7 +12,7 @@
 #
 
 # Add entry in menu
-# MENUENTRY vpn 020 "OpenVPN" "virtual private networking"
+# MENUENTRY vpn 010 "OpenVPN" "virtual private networking"
 
 use CGI;
 use CGI qw/:standard/;

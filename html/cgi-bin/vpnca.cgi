@@ -22,7 +22,7 @@
 #
 
 # Add entry in menu
-# MENUENTRY vpn 030 "CA" "virtual private networking"
+# MENUENTRY vpn 020 "CA" "virtual private networking"
 #
 # Make sure translation exists $Lang::tr{'virtual private networking'}
 

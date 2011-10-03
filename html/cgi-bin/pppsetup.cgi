@@ -15,7 +15,8 @@
 #
 
 # Add entry in menu
-# MENUENTRY network 010 "alt dialup" "dialup settings"
+# Crooks disabled
+# MENU..ENTRY network 010 "alt dialup" "dialup settings"
 #
 # Make sure translation exists $Lang::tr{'alt dialup'} $Lang::tr{'dialup settings'}
 

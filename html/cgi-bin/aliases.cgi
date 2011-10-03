@@ -21,7 +21,7 @@
 # $Id: aliases.cgi 5785 2011-08-13 10:56:52Z owes $
 
 # Add entry in menu
-# MENUENTRY network 040 "aliases" "dialup settings"
+# MENUENTRY network 010 "aliases" "dialup settings"
 #
 # Make sure translation exists $Lang::tr{'aliases'}
 
