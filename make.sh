@@ -44,10 +44,10 @@
 #########################################################################################################
 
 # The official project name
-NAME="IPCop"
+NAME="eFive"
 
 # Just a short name for IPCop
-SNAME="ipcop"
+SNAME="efive"
 
 # This is the IPCop version number for the release.
 VERSION=2.0.1
@@ -67,7 +67,7 @@ TOOLCHAINVERSION=1.9.17
 OTHERSRC=${SNAME}-${VERSION}-othersrc.tar.bz2
 
 # The official IPCop slogan
-SLOGAN="The Bad Packets Stop Here"
+SLOGAN="Firewall and VPN for eWON"
 
 # Where the ipcop specific config files will be installed (this is the path on a running ipcop system)
 CONFIG_ROOT=/var/ipcop
